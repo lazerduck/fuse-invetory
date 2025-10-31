@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "vhEtdoHw0p4=",
+  "success": true,
+  "projectFilePath": "/home/adam/projects/fuse-invetory/src/Server/Server.csproj",
+  "expectedPackageFiles": [
+    "/home/adam/.nuget/packages/microsoft.aspnetcore.spaservices.extensions/8.0.21/microsoft.aspnetcore.spaservices.extensions.8.0.21.nupkg.sha512",
+    "/home/adam/.nuget/packages/microsoft.extensions.fileproviders.abstractions/8.0.0/microsoft.extensions.fileproviders.abstractions.8.0.0.nupkg.sha512",
+    "/home/adam/.nuget/packages/microsoft.extensions.fileproviders.physical/8.0.0/microsoft.extensions.fileproviders.physical.8.0.0.nupkg.sha512",
+    "/home/adam/.nuget/packages/microsoft.extensions.filesystemglobbing/8.0.0/microsoft.extensions.filesystemglobbing.8.0.0.nupkg.sha512",
+    "/home/adam/.nuget/packages/microsoft.extensions.primitives/8.0.0/microsoft.extensions.primitives.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
