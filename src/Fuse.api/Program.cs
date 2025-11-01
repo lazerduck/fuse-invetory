@@ -1,4 +1,3 @@
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "Web/dist");
