@@ -1,6 +1,10 @@
+using Fuse.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "Web/dist");
+
+FuseDataModule.RegisterServices(builder.Services);
 
 var app = builder.Build();
 

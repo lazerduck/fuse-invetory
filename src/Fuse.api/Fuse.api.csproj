@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.21" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Fuse.Data/Fuse.Data.csproj" />
+  </ItemGroup>
+
 </Project>
