@@ -60,6 +60,14 @@ namespace Fuse.Core.Services
         {
             return Task.FromResult(_serviceManifests);
         }
+
+        public Task DeleteServiceManifestAsync(Guid id)
+        {
+            var manifest = _serviceManifests.FirstOrDefault(m => m.Id == id)
+                ?? throw new ArgumentException($"No manifest found with Id {id}.");
+            _serviceManifests.Remove(manifest);
+            return _dataRepository.SaveObjectAsync(fileName, _serviceManifests);
+        }
     }
 
 }

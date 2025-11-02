@@ -8,5 +8,6 @@ namespace Fuse.Core.Interfaces
         Task UpdateServiceManifestAsync(ServiceManifest manifest);
         Task<ServiceManifest?> GetServiceManifestAsync(Guid id);
         Task<List<ServiceManifest>> GetAllServiceManifestsAsync();
+        Task DeleteServiceManifestAsync(Guid id);
     }
 }

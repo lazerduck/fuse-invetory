@@ -1,15 +1,15 @@
 using Fuse.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
 
-builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "Web/dist");
+builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "Fuse.Web/dist");
 
 FuseDataModule.RegisterServices(builder.Services);
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
-
+app.UseRouting();
 app.UseSpaStaticFiles();
 
 app.UseSpa(spa =>
