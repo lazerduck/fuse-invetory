@@ -44,7 +44,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useServicesStore } from '../stores/ServicesStore';
+import type { ServiceManifest } from '../httpClients/client.gen';
+
+const router = useRouter();
 const servicesStore = useServicesStore();
 
 const filter = ref('');
@@ -68,9 +72,8 @@ const filteredServices = computed(() => {
   );
 });
 
-function viewService(service: number) {
-  // custom action, e.g. navigate to detail view
-  console.log('Viewing service', service)
+function viewService(service: ServiceManifest) {
+  router.push(`/services/${service.id}/edit`);
 }
 
 onMounted(async () => {
