@@ -140,4 +140,91 @@ public class AccountServiceTests
         result.IsSuccess.Should().BeTrue();
         (await service.GetAccountsAsync()).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task CreateGrantOnAccount_Success()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, Array.Empty<Grant>(), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var result = await service.CreateGrant(new CreateAccountGrant(acc.Id, "db1", "schema1", new HashSet<Privilege> { Privilege.Select, Privilege.Update }));
+        result.IsSuccess.Should().BeTrue();
+        var created = result.Value!;
+        created.Database.Should().Be("db1");
+
+        var updatedAcc = await service.GetAccountByIdAsync(acc.Id);
+        updatedAcc!.Grants.Should().ContainSingle(g => g.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task CreateGrantOnAccount_AccountNotFound()
+    {
+        var store = NewStore();
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var result = await service.CreateGrant(new CreateAccountGrant(Guid.NewGuid(), "db1", "schema1", new HashSet<Privilege> { Privilege.Select, Privilege.Update }));
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorType.Should().Be(ErrorType.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateGrantOnAccount_Success()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var grant = new Grant(Guid.NewGuid(), "db1", "schema1", new HashSet<Privilege> { Privilege.Select });
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, new[] { grant }, new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var result = await service.UpdateGrant(new UpdateAccountGrant(acc.Id, grant.Id, "db2", "schema2", new HashSet<Privilege> { Privilege.Insert }));
+        result.IsSuccess.Should().BeTrue();
+        var updatedGrant = result.Value!;
+        updatedGrant.Database.Should().Be("db2");
+
+        var updatedAcc = await service.GetAccountByIdAsync(acc.Id);
+        updatedAcc!.Grants.Should().ContainSingle(g => g.Id == updatedGrant.Id && g.Database == "db2");
+    }
+
+    [Fact]
+    public async Task UpdateGrantOnAccount_GrantNotFound()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, Array.Empty<Grant>(), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+        var result = await service.UpdateGrant(new UpdateAccountGrant(acc.Id, Guid.NewGuid(), "db2", "schema2", new HashSet<Privilege> { Privilege.Insert }));
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorType.Should().Be(ErrorType.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteGrant_Success()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var grant = new Grant(Guid.NewGuid(), "db1", "schema1", new HashSet<Privilege> { Privilege.Select });
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, new[] { grant }, new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var result = await service.DeleteGrant(new DeleteAccountGrant(acc.Id, grant.Id));
+        result.IsSuccess.Should().BeTrue();
+
+        var updatedAcc = await service.GetAccountByIdAsync(acc.Id);
+        updatedAcc!.Grants.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeleteGrant_GrantNotFound()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, Array.Empty<Grant>(), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var result = await service.DeleteGrant(new DeleteAccountGrant(acc.Id, Guid.NewGuid()));
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorType.Should().Be(ErrorType.NotFound);
+    }
 }

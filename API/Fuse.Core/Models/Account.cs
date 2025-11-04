@@ -24,6 +24,7 @@ public enum AuthKind { None, UserPassword, ApiKey, BearerToken, OAuthClient, Man
 
 public record Grant
 (
+    Guid Id,
     string? Database,
     string? Schema,
     HashSet<Privilege> Privileges

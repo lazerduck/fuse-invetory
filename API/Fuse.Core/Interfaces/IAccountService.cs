@@ -11,4 +11,9 @@ public interface IAccountService
     Task<Result<Account>> CreateAccountAsync(CreateAccount command);
     Task<Result<Account>> UpdateAccountAsync(UpdateAccount command);
     Task<Result> DeleteAccountAsync(DeleteAccount command);
+
+    // Grants
+    Task<Result<Grant>> CreateGrant(CreateAccountGrant command);
+    Task<Result<Grant>> UpdateGrant(UpdateAccountGrant command);
+    Task<Result> DeleteGrant(DeleteAccountGrant command);
 }

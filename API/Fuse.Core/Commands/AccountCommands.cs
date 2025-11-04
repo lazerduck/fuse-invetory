@@ -29,3 +29,23 @@ public record UpdateAccount(
 public record DeleteAccount(
     Guid Id
 );
+
+public record CreateAccountGrant(
+    Guid AccountId,
+    string? Database,
+    string? Schema,
+    HashSet<Privilege> Privileges
+);
+
+public record UpdateAccountGrant(
+    Guid AccountId,
+    Guid GrantId,
+    string? Database,
+    string? Schema,
+    HashSet<Privilege> Privileges
+);
+
+public record DeleteAccountGrant(
+    Guid AccountId,
+    Guid GrantId
+);

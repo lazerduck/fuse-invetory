@@ -117,4 +117,116 @@ public class AccountService : IAccountService
 
         return null;
     }
+
+    public async Task<Result<Grant>> CreateGrant(CreateAccountGrant command)
+    {
+        if (command.Privileges is null || command.Privileges.Count == 0)
+        {
+            return Result<Grant>.Failure("At least one privilege must be specified.", ErrorType.Validation);
+        }
+
+        var account = (await _fuseStore.GetAsync()).Accounts.FirstOrDefault(a => a.Id == command.AccountId);
+        if (account is null)
+        {
+            return Result<Grant>.Failure($"Account with ID '{command.AccountId}' not found.", ErrorType.NotFound);
+        }
+
+        var grant = new Grant(
+            Guid.NewGuid(),
+            command.Database,
+            command.Schema,
+            command.Privileges
+        );
+
+        await _fuseStore.UpdateAsync(s =>
+        {
+            var updatedAccounts = s.Accounts.Select(a =>
+            {
+                if (a.Id == command.AccountId)
+                {
+                    var updatedGrants = a.Grants.Append(grant).ToList();
+                    return a with { Grants = updatedGrants, UpdatedAt = DateTime.UtcNow };
+                }
+                return a;
+            }).ToList();
+            return s with { Accounts = updatedAccounts };
+        });
+
+        return Result<Grant>.Success(grant);
+    }
+
+    public async Task<Result<Grant>> UpdateGrant(UpdateAccountGrant command)
+    {
+        if (command.Privileges is null || command.Privileges.Count == 0)
+        {
+            return Result<Grant>.Failure("At least one privilege must be specified.", ErrorType.Validation);
+        }
+
+        var account = (await _fuseStore.GetAsync()).Accounts.FirstOrDefault(a => a.Id == command.AccountId);
+
+        if (account is null)
+        {
+            return Result<Grant>.Failure($"Account with ID '{command.AccountId}' not found.", ErrorType.NotFound);
+        }
+
+        var existingGrant = account.Grants.FirstOrDefault(g => g.Id == command.GrantId);
+        if (existingGrant is null)
+        {
+            return Result<Grant>.Failure($"Grant with ID '{command.GrantId}' not found on Account '{command.AccountId}'.", ErrorType.NotFound);
+        }
+
+        var updatedGrant = existingGrant with
+        {
+            Database = command.Database,
+            Schema = command.Schema,
+            Privileges = command.Privileges
+        };
+
+        await _fuseStore.UpdateAsync(s =>
+        {
+            var updatedAccounts = s.Accounts.Select(a =>
+            {
+                if (a.Id == command.AccountId)
+                {
+                    var updatedGrants = a.Grants.Select(g => g.Id == command.GrantId ? updatedGrant : g).ToList();
+                    return a with { Grants = updatedGrants, UpdatedAt = DateTime.UtcNow };
+                }
+                return a;
+            }).ToList();
+            return s with { Accounts = updatedAccounts };
+        });
+
+        return Result<Grant>.Success(updatedGrant);
+    }
+
+    public async Task<Result> DeleteGrant(DeleteAccountGrant command)
+    {
+        var account = (await _fuseStore.GetAsync()).Accounts.FirstOrDefault(a => a.Id == command.AccountId);
+        if (account is null)
+        {
+            return Result.Failure($"Account with ID '{command.AccountId}' not found.", ErrorType.NotFound);
+        }
+
+        var existingGrant = account.Grants.FirstOrDefault(g => g.Id == command.GrantId);
+        if (existingGrant is null)
+        {
+            return Result.Failure($"Grant with ID '{command.GrantId}' not found on Account '{command.AccountId}'.", ErrorType.NotFound);
+        }
+
+        await _fuseStore.UpdateAsync(s =>
+        {
+            var updatedAccounts = s.Accounts.Select(a =>
+            {
+                if (a.Id == command.AccountId)
+                {
+                    var updatedGrants = a.Grants.Where(g => g.Id != command.GrantId).ToList();
+                    return a with { Grants = updatedGrants, UpdatedAt = DateTime.UtcNow };
+                }
+                return a;
+            }).ToList();
+            return s with { Accounts = updatedAccounts };
+        });
+
+        return Result.Success();
+    }
 }
