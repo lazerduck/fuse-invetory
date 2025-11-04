@@ -142,6 +142,89 @@ public class AccountServiceTests
     }
 
     [Fact]
+    public async Task CreateAccount_GrantWithoutPrivileges_ReturnsValidation()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var grants = new[]
+        {
+            new Grant(Guid.Empty, "db1", "schema1", new HashSet<Privilege>())
+        };
+
+        var result = await service.CreateAccountAsync(new CreateAccount(res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, grants, new HashSet<Guid>()));
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorType.Should().Be(ErrorType.Validation);
+    }
+
+    [Fact]
+    public async Task CreateAccount_AssignsGrantIdsWhenMissing()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var grants = new[]
+        {
+            new Grant(Guid.Empty, "db1", "schema1", new HashSet<Privilege> { Privilege.Select })
+        };
+
+        var result = await service.CreateAccountAsync(new CreateAccount(res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, grants, new HashSet<Guid>()));
+        result.IsSuccess.Should().BeTrue();
+
+        var created = result.Value!;
+        var createdGrant = created.Grants.Should().ContainSingle().Subject;
+        createdGrant.Id.Should().NotBe(Guid.Empty);
+        createdGrant.Privileges.Should().ContainSingle(p => p == Privilege.Select);
+
+        var stored = await service.GetAccountByIdAsync(created.Id);
+        stored.Should().NotBeNull();
+        stored!.Grants.Should().ContainSingle(g => g.Id == createdGrant.Id);
+    }
+
+    [Fact]
+    public async Task UpdateAccount_GrantWithoutPrivileges_ReturnsValidation()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var grant = new Grant(Guid.NewGuid(), "db1", "schema1", new HashSet<Privilege> { Privilege.Select });
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, new[] { grant }, new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var updatedGrants = new[]
+        {
+            new Grant(grant.Id, "db1", "schema1", new HashSet<Privilege>())
+        };
+
+        var result = await service.UpdateAccountAsync(new UpdateAccount(acc.Id, res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, updatedGrants, new HashSet<Guid>()));
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorType.Should().Be(ErrorType.Validation);
+    }
+
+    [Fact]
+    public async Task UpdateAccount_AssignsIdsForNewGrants()
+    {
+        var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var acc = new Account(Guid.NewGuid(), res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, Array.Empty<Grant>(), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(accounts: new[] { acc }, res: new[] { res });
+        var service = new AccountService(store, new TagLookupService(store));
+
+        var updatedGrants = new[]
+        {
+            new Grant(Guid.Empty, "db1", "schema1", new HashSet<Privilege> { Privilege.Select })
+        };
+
+        var result = await service.UpdateAccountAsync(new UpdateAccount(acc.Id, res.Id, TargetKind.External, AuthKind.ApiKey, "sec", null, null, updatedGrants, new HashSet<Guid>()));
+        result.IsSuccess.Should().BeTrue();
+
+        var updated = result.Value!;
+        var updatedGrant = updated.Grants.Should().ContainSingle().Subject;
+        updatedGrant.Id.Should().NotBe(Guid.Empty);
+        updatedGrant.Privileges.Should().ContainSingle(p => p == Privilege.Select);
+    }
+
+    [Fact]
     public async Task CreateGrantOnAccount_Success()
     {
         var res = new ExternalResource(Guid.NewGuid(), "Res", null, new Uri("http://x"), new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);

@@ -27,6 +27,12 @@ public class AccountService : IAccountService
         var validation = await ValidateAccountCommand(command.TargetId, command.TargetKind, command.AuthKind, command.SecretRef, command.UserName, command.TagIds);
         if (validation is not null) return validation;
 
+        var grantValidation = ValidateAndNormalizeGrants(command.Grants);
+        if (!grantValidation.IsSuccess)
+            return Result<Account>.Failure(grantValidation.Error!, grantValidation.ErrorType ?? ErrorType.Validation);
+
+        var normalizedGrants = grantValidation.Value!;
+
         var now = DateTime.UtcNow;
         var account = new Account(
             Id: Guid.NewGuid(),
@@ -36,7 +42,7 @@ public class AccountService : IAccountService
             SecretRef: command.SecretRef,
             UserName: command.UserName,
             Parameters: command.Parameters,
-            Grants: command.Grants,
+            Grants: normalizedGrants,
             TagIds: command.TagIds,
             CreatedAt: now,
             UpdatedAt: now
@@ -56,6 +62,12 @@ public class AccountService : IAccountService
         var validation = await ValidateAccountCommand(command.TargetId, command.TargetKind, command.AuthKind, command.SecretRef, command.UserName, command.TagIds);
         if (validation is not null) return validation;
 
+        var grantValidation = ValidateAndNormalizeGrants(command.Grants);
+        if (!grantValidation.IsSuccess)
+            return Result<Account>.Failure(grantValidation.Error!, grantValidation.ErrorType ?? ErrorType.Validation);
+
+        var normalizedGrants = grantValidation.Value!;
+
         var updated = existing with
         {
             TargetId = command.TargetId,
@@ -64,7 +76,7 @@ public class AccountService : IAccountService
             SecretRef = command.SecretRef,
             UserName = command.UserName,
             Parameters = command.Parameters,
-            Grants = command.Grants,
+            Grants = normalizedGrants,
             TagIds = command.TagIds,
             UpdatedAt = DateTime.UtcNow
         };
@@ -228,5 +240,32 @@ public class AccountService : IAccountService
         });
 
         return Result.Success();
+    }
+
+    private Result<IReadOnlyList<Grant>> ValidateAndNormalizeGrants(IReadOnlyList<Grant>? grants)
+    {
+        if (grants is null || grants.Count == 0)
+            return Result<IReadOnlyList<Grant>>.Success(Array.Empty<Grant>());
+
+        var normalized = new List<Grant>(grants.Count);
+        var seenIds = new HashSet<Guid>();
+
+        foreach (var grant in grants)
+        {
+            if (grant.Privileges is null || grant.Privileges.Count == 0)
+                return Result<IReadOnlyList<Grant>>.Failure("Grant must include at least one privilege.", ErrorType.Validation);
+
+            var privileges = new HashSet<Privilege>(grant.Privileges);
+            if (privileges.Count == 0)
+                return Result<IReadOnlyList<Grant>>.Failure("Grant must include at least one privilege.", ErrorType.Validation);
+
+            var id = grant.Id == Guid.Empty ? Guid.NewGuid() : grant.Id;
+            if (!seenIds.Add(id))
+                return Result<IReadOnlyList<Grant>>.Failure($"Duplicate grant ID '{id}'.", ErrorType.Validation);
+
+            normalized.Add(grant with { Id = id, Privileges = privileges });
+        }
+
+        return Result<IReadOnlyList<Grant>>.Success(normalized);
     }
 }
