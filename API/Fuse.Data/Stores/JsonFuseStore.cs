@@ -47,7 +47,8 @@ public sealed class JsonFuseStore : IFuseStore
                 ExternalResources: await ReadAsync<ExternalResource>("externalresources.json", ct),
                 Accounts: await ReadAsync<Account>("accounts.json", ct),
                 Tags: await ReadAsync<Tag>("tags.json", ct),
-                Environments: await ReadAsync<EnvironmentInfo>("environments.json", ct)
+                Environments: await ReadAsync<EnvironmentInfo>("environments.json", ct),
+                Security: await ReadSecurityAsync("security.json", ct)
             );
 
             var errors = SnapshotValidator.Validate(_cache);
@@ -75,6 +76,7 @@ public async Task SaveAsync(Snapshot snapshot, CancellationToken ct = default)
             await WriteAsync("accounts.json", snapshot.Accounts, ct);
             await WriteAsync("tags.json", snapshot.Tags, ct);
             await WriteAsync("environments.json", snapshot.Environments, ct);
+            await WriteSecurityAsync("security.json", snapshot.Security, ct);
 
             _cache = snapshot; // swap the in-memory snapshot
             Changed?.Invoke(snapshot);
@@ -98,6 +100,30 @@ public async Task SaveAsync(Snapshot snapshot, CancellationToken ct = default)
     }
 
     private async Task WriteAsync<T>(string file, IReadOnlyList<T> value, CancellationToken ct)
+    {
+        var path = Path.Combine(_options.DataDirectory, file);
+        var tmp = path + ".tmp";
+        await using (var fs = File.Create(tmp))
+        {
+            await JsonSerializer.SerializeAsync(fs, value, Json, ct);
+        }
+        File.Move(tmp, path, overwrite: true);
+    }
+
+    private async Task<SecurityState> ReadSecurityAsync(string file, CancellationToken ct)
+    {
+        var path = Path.Combine(_options.DataDirectory, file);
+        if (!File.Exists(path))
+        {
+            return new SecurityState(new SecuritySettings(SecurityLevel.None, DateTime.UtcNow), Array.Empty<SecurityUser>());
+        }
+
+        await using var fs = File.OpenRead(path);
+        return (await JsonSerializer.DeserializeAsync<SecurityState>(fs, Json, ct))
+            ?? new SecurityState(new SecuritySettings(SecurityLevel.None, DateTime.UtcNow), Array.Empty<SecurityUser>());
+    }
+
+    private async Task WriteSecurityAsync(string file, SecurityState value, CancellationToken ct)
     {
         var path = Path.Combine(_options.DataDirectory, file);
         var tmp = path + ".tmp";

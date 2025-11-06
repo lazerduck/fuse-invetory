@@ -7,5 +7,6 @@ public record Snapshot(
     IReadOnlyList<ExternalResource> ExternalResources,
     IReadOnlyList<Account> Accounts,
     IReadOnlyList<Tag> Tags,
-    IReadOnlyList<EnvironmentInfo> Environments
+    IReadOnlyList<EnvironmentInfo> Environments,
+    SecurityState Security
 );

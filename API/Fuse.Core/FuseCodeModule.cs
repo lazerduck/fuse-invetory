@@ -15,5 +15,6 @@ public static class FuseCodeModule
         services.AddScoped<IExternalResourceService, ExternalResourceService>();
         services.AddScoped<IApplicationService, ApplicationService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddSingleton<ISecurityService, SecurityService>();
     }
 }
