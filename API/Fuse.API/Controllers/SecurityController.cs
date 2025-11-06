@@ -148,7 +148,7 @@ namespace Fuse.API.Controllers
                 : new SecurityUserInfo(user.Id, user.UserName, user.Role, user.CreatedAt, user.UpdatedAt);
         }
 
-        private class SecurityStateResponse
+        public class SecurityStateResponse
         {
             public SecurityLevel Level { get; set; }
             public DateTime UpdatedAt { get; set; }

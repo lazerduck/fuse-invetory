@@ -18,7 +18,8 @@ public sealed class InMemoryFuseStore : IFuseStore
             ExternalResources: Array.Empty<ExternalResource>(),
             Accounts: Array.Empty<Account>(),
             Tags: Array.Empty<Tag>(),
-            Environments: Array.Empty<EnvironmentInfo>()
+            Environments: Array.Empty<EnvironmentInfo>(),
+            Security: new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
     }
 

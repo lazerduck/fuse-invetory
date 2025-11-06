@@ -33,7 +33,8 @@ public class ExternalResourceServiceTests
             ExternalResources: (res ?? Array.Empty<ExternalResource>()).ToArray(),
             Accounts: Array.Empty<Account>(),
             Tags: (tags ?? Array.Empty<Tag>()).ToArray(),
-            Environments: Array.Empty<EnvironmentInfo>()
+            Environments: Array.Empty<EnvironmentInfo>(),
+            Security: new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         return new InMemoryFuseStore(snapshot);
     }
