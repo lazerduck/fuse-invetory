@@ -25,7 +25,11 @@ public sealed class SecurityMiddleware
         var path = context.Request.Path;
         var state = await securityService.GetSecurityStateAsync(cancellationToken);
         var token = ExtractToken(context.Request);
-        var user = await securityService.ValidateSessionAsync(token, refresh: true, cancellationToken);
+        SecurityUser? user = null;
+        if (token is not null)
+        {
+            user = await securityService.ValidateSessionAsync(token, refresh: true, cancellationToken);
+        }
 
         if (user is not null)
             AttachPrincipal(context, user);

@@ -42,6 +42,11 @@ const router = createRouter({
       path: '/tags',
       name: 'tags',
       component: () => import('./pages/TagsPage.vue')
+    },
+    {
+      path: '/security',
+      name: 'security',
+      component: () => import('./pages/Security.vue')
     }
   ]
 })

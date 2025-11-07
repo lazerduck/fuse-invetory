@@ -210,6 +210,35 @@ export interface IFuseApiClient {
     /**
      * @return OK
      */
+    state(signal?: AbortSignal): Promise<SecurityStateResponse>;
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    settings(body: UpdateSecuritySettings | undefined, signal?: AbortSignal): Promise<SecuritySettings>;
+
+    /**
+     * @param body (optional) 
+     * @return Created
+     */
+    accounts(body: CreateSecurityUser | undefined, signal?: AbortSignal): Promise<SecurityUserInfo>;
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    login(body: LoginSecurityUser | undefined, signal?: AbortSignal): Promise<LoginSession>;
+
+    /**
+     * @param body (optional) 
+     * @return No Content
+     */
+    logout(body: LogoutSecurityUser | undefined, signal?: AbortSignal): Promise<void>;
+
+    /**
+     * @return OK
+     */
     serverAll(signal?: AbortSignal): Promise<Server[]>;
 
     /**
@@ -2207,6 +2236,275 @@ export class FuseApiClient implements IFuseApiClient {
     /**
      * @return OK
      */
+    state(signal?: AbortSignal): Promise<SecurityStateResponse> {
+        let url_ = this.baseUrl + "/api/Security/state";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processState(_response);
+        });
+    }
+
+    protected processState(response: Response): Promise<SecurityStateResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = SecurityStateResponse.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SecurityStateResponse>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    settings(body: UpdateSecuritySettings | undefined, signal?: AbortSignal): Promise<SecuritySettings> {
+        let url_ = this.baseUrl + "/api/Security/settings";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSettings(_response);
+        });
+    }
+
+    protected processSettings(response: Response): Promise<SecuritySettings> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = SecuritySettings.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 401) {
+            return response.text().then((_responseText) => {
+            let result401: any = null;
+            let resultData401 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result401 = ProblemDetails.fromJS(resultData401);
+            return throwException("Unauthorized", status, _responseText, _headers, result401);
+            });
+        } else if (status === 403) {
+            return response.text().then((_responseText) => {
+            let result403: any = null;
+            let resultData403 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result403 = ProblemDetails.fromJS(resultData403);
+            return throwException("Forbidden", status, _responseText, _headers, result403);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SecuritySettings>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return Created
+     */
+    accounts(body: CreateSecurityUser | undefined, signal?: AbortSignal): Promise<SecurityUserInfo> {
+        let url_ = this.baseUrl + "/api/Security/accounts";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAccounts(_response);
+        });
+    }
+
+    protected processAccounts(response: Response): Promise<SecurityUserInfo> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 201) {
+            return response.text().then((_responseText) => {
+            let result201: any = null;
+            let resultData201 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result201 = SecurityUserInfo.fromJS(resultData201);
+            return result201;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 401) {
+            return response.text().then((_responseText) => {
+            let result401: any = null;
+            let resultData401 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result401 = ProblemDetails.fromJS(resultData401);
+            return throwException("Unauthorized", status, _responseText, _headers, result401);
+            });
+        } else if (status === 403) {
+            return response.text().then((_responseText) => {
+            let result403: any = null;
+            let resultData403 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result403 = ProblemDetails.fromJS(resultData403);
+            return throwException("Forbidden", status, _responseText, _headers, result403);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SecurityUserInfo>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    login(body: LoginSecurityUser | undefined, signal?: AbortSignal): Promise<LoginSession> {
+        let url_ = this.baseUrl + "/api/Security/login";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processLogin(_response);
+        });
+    }
+
+    protected processLogin(response: Response): Promise<LoginSession> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = LoginSession.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 401) {
+            return response.text().then((_responseText) => {
+            let result401: any = null;
+            let resultData401 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result401 = ProblemDetails.fromJS(resultData401);
+            return throwException("Unauthorized", status, _responseText, _headers, result401);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<LoginSession>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return No Content
+     */
+    logout(body: LogoutSecurityUser | undefined, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/Security/logout";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processLogout(_response);
+        });
+    }
+
+    protected processLogout(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
     serverAll(signal?: AbortSignal): Promise<Server[]> {
         let url_ = this.baseUrl + "/api/Server";
         url_ = url_.replace(/[?&]$/, "");
@@ -3702,6 +4000,54 @@ export interface ICreateExternalResource {
     tagIds?: string[] | undefined;
 }
 
+export class CreateSecurityUser implements ICreateSecurityUser {
+    userName?: string | undefined;
+    password?: string | undefined;
+    role?: SecurityRole;
+    requestedBy?: string | undefined;
+
+    constructor(data?: ICreateSecurityUser) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userName = _data["UserName"];
+            this.password = _data["Password"];
+            this.role = _data["Role"];
+            this.requestedBy = _data["RequestedBy"];
+        }
+    }
+
+    static fromJS(data: any): CreateSecurityUser {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateSecurityUser();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["UserName"] = this.userName;
+        data["Password"] = this.password;
+        data["Role"] = this.role;
+        data["RequestedBy"] = this.requestedBy;
+        return data;
+    }
+}
+
+export interface ICreateSecurityUser {
+    userName?: string | undefined;
+    password?: string | undefined;
+    role?: SecurityRole;
+    requestedBy?: string | undefined;
+}
+
 export class CreateServer implements ICreateServer {
     name?: string | undefined;
     hostname?: string | undefined;
@@ -4066,6 +4412,126 @@ export interface IGrant {
     privileges?: Privilege[] | undefined;
 }
 
+export class LoginSecurityUser implements ILoginSecurityUser {
+    userName?: string | undefined;
+    password?: string | undefined;
+
+    constructor(data?: ILoginSecurityUser) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userName = _data["UserName"];
+            this.password = _data["Password"];
+        }
+    }
+
+    static fromJS(data: any): LoginSecurityUser {
+        data = typeof data === 'object' ? data : {};
+        let result = new LoginSecurityUser();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["UserName"] = this.userName;
+        data["Password"] = this.password;
+        return data;
+    }
+}
+
+export interface ILoginSecurityUser {
+    userName?: string | undefined;
+    password?: string | undefined;
+}
+
+export class LoginSession implements ILoginSession {
+    token?: string | undefined;
+    expiresAt?: Date;
+    user?: SecurityUserInfo;
+
+    constructor(data?: ILoginSession) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["Token"];
+            this.expiresAt = _data["ExpiresAt"] ? new Date(_data["ExpiresAt"].toString()) : undefined as any;
+            this.user = _data["User"] ? SecurityUserInfo.fromJS(_data["User"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): LoginSession {
+        data = typeof data === 'object' ? data : {};
+        let result = new LoginSession();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Token"] = this.token;
+        data["ExpiresAt"] = this.expiresAt ? this.expiresAt.toISOString() : undefined as any;
+        data["User"] = this.user ? this.user.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface ILoginSession {
+    token?: string | undefined;
+    expiresAt?: Date;
+    user?: SecurityUserInfo;
+}
+
+export class LogoutSecurityUser implements ILogoutSecurityUser {
+    token?: string | undefined;
+
+    constructor(data?: ILogoutSecurityUser) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["Token"];
+        }
+    }
+
+    static fromJS(data: any): LogoutSecurityUser {
+        data = typeof data === 'object' ? data : {};
+        let result = new LogoutSecurityUser();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Token"] = this.token;
+        return data;
+    }
+}
+
+export interface ILogoutSecurityUser {
+    token?: string | undefined;
+}
+
 export enum Privilege {
     Select = "Select",
     Insert = "Insert",
@@ -4139,6 +4605,161 @@ export interface IProblemDetails {
     instance?: string | undefined;
 
     [key: string]: any;
+}
+
+export enum SecurityLevel {
+    None = "None",
+    RestrictedEditing = "RestrictedEditing",
+    FullyRestricted = "FullyRestricted",
+}
+
+export enum SecurityRole {
+    Reader = "Reader",
+    Admin = "Admin",
+}
+
+export class SecuritySettings implements ISecuritySettings {
+    level?: SecurityLevel;
+    updatedAt?: Date;
+
+    constructor(data?: ISecuritySettings) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.level = _data["Level"];
+            this.updatedAt = _data["UpdatedAt"] ? new Date(_data["UpdatedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): SecuritySettings {
+        data = typeof data === 'object' ? data : {};
+        let result = new SecuritySettings();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Level"] = this.level;
+        data["UpdatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface ISecuritySettings {
+    level?: SecurityLevel;
+    updatedAt?: Date;
+}
+
+export class SecurityStateResponse implements ISecurityStateResponse {
+    level?: SecurityLevel;
+    updatedAt?: Date;
+    requiresSetup?: boolean;
+    hasUsers?: boolean;
+    currentUser?: SecurityUserInfo;
+
+    constructor(data?: ISecurityStateResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.level = _data["Level"];
+            this.updatedAt = _data["UpdatedAt"] ? new Date(_data["UpdatedAt"].toString()) : undefined as any;
+            this.requiresSetup = _data["RequiresSetup"];
+            this.hasUsers = _data["HasUsers"];
+            this.currentUser = _data["CurrentUser"] ? SecurityUserInfo.fromJS(_data["CurrentUser"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): SecurityStateResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SecurityStateResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Level"] = this.level;
+        data["UpdatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
+        data["RequiresSetup"] = this.requiresSetup;
+        data["HasUsers"] = this.hasUsers;
+        data["CurrentUser"] = this.currentUser ? this.currentUser.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface ISecurityStateResponse {
+    level?: SecurityLevel;
+    updatedAt?: Date;
+    requiresSetup?: boolean;
+    hasUsers?: boolean;
+    currentUser?: SecurityUserInfo;
+}
+
+export class SecurityUserInfo implements ISecurityUserInfo {
+    id?: string;
+    userName?: string | undefined;
+    role?: SecurityRole;
+    createdAt?: Date;
+    updatedAt?: Date;
+
+    constructor(data?: ISecurityUserInfo) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["Id"];
+            this.userName = _data["UserName"];
+            this.role = _data["Role"];
+            this.createdAt = _data["CreatedAt"] ? new Date(_data["CreatedAt"].toString()) : undefined as any;
+            this.updatedAt = _data["UpdatedAt"] ? new Date(_data["UpdatedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): SecurityUserInfo {
+        data = typeof data === 'object' ? data : {};
+        let result = new SecurityUserInfo();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Id"] = this.id;
+        data["UserName"] = this.userName;
+        data["Role"] = this.role;
+        data["CreatedAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        data["UpdatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface ISecurityUserInfo {
+    id?: string;
+    userName?: string | undefined;
+    role?: SecurityRole;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export class Server implements IServer {
@@ -4887,6 +5508,46 @@ export interface IUpdateExternalResource {
     description?: string | undefined;
     resourceUri?: string | undefined;
     tagIds?: string[] | undefined;
+}
+
+export class UpdateSecuritySettings implements IUpdateSecuritySettings {
+    level?: SecurityLevel;
+    requestedBy?: string | undefined;
+
+    constructor(data?: IUpdateSecuritySettings) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.level = _data["Level"];
+            this.requestedBy = _data["RequestedBy"];
+        }
+    }
+
+    static fromJS(data: any): UpdateSecuritySettings {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateSecuritySettings();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Level"] = this.level;
+        data["RequestedBy"] = this.requestedBy;
+        return data;
+    }
+}
+
+export interface IUpdateSecuritySettings {
+    level?: SecurityLevel;
+    requestedBy?: string | undefined;
 }
 
 export class UpdateServer implements IUpdateServer {

@@ -138,6 +138,20 @@
               Tags
             </q-item-section>
           </q-item>
+
+          <q-item
+            clickable
+            v-ripple
+            :to="{ name: 'security' }"
+            active-class="bg-primary text-white"
+          >
+            <q-item-section avatar>
+              <q-icon name="security" />
+            </q-item-section>
+            <q-item-section>
+              Security
+            </q-item-section>
+          </q-item>
         </q-list>
       </q-scroll-area>
     </q-drawer>
