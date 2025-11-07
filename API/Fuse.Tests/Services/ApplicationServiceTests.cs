@@ -38,7 +38,8 @@ public class ApplicationServiceTests
             ExternalResources: (resources ?? Array.Empty<ExternalResource>()).ToArray(),
             Accounts: (accounts ?? Array.Empty<Account>()).ToArray(),
             Tags: (tags ?? Array.Empty<Tag>()).ToArray(),
-            Environments: (envs ?? Array.Empty<EnvironmentInfo>()).ToArray()
+            Environments: (envs ?? Array.Empty<EnvironmentInfo>()).ToArray(),
+            Security: new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         return new InMemoryFuseStore(snapshot);
     }

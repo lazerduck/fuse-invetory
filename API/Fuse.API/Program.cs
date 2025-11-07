@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Fuse.API.Middleware;
 using Fuse.Core;
 using Fuse.Core.Interfaces;
 using Fuse.Data;
@@ -54,6 +55,8 @@ else
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<SecurityMiddleware>();
 
 app.MapControllers();
 

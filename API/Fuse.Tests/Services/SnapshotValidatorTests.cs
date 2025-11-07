@@ -30,7 +30,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             tags,
-            envs
+            envs,
+            Security: new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -74,7 +75,9 @@ public class SnapshotValidatorTests
             new Account(Guid.NewGuid(), extId, TargetKind.External, AuthKind.None, "secret", null, null, new List<Grant>(), new HashSet<Guid>{ tagId }, DateTime.UtcNow, DateTime.UtcNow)
         };
 
-        var snapshot = new Snapshot(apps, dataStores, servers, externals, accounts, tags, envs);
+        var security = new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>());
+
+        var snapshot = new Snapshot(apps, dataStores, servers, externals, accounts, tags, envs, security);
 
         var errors = SnapshotValidator.Validate(snapshot);
         Assert.Empty(errors);
@@ -89,10 +92,11 @@ public class SnapshotValidatorTests
             new List<Application>(),
             new List<DataStore>(),
             new List<Server>(),
-            new List<ExternalResource>{ new ExternalResource(erId, "ext", null, new Uri("https://ext"), new HashSet<Guid>{ missingTag }, DateTime.UtcNow, DateTime.UtcNow) },
+            new List<ExternalResource> { new ExternalResource(erId, "ext", null, new Uri("https://ext"), new HashSet<Guid> { missingTag }, DateTime.UtcNow, DateTime.UtcNow) },
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         var errors = SnapshotValidator.Validate(snapshot);
         Assert.Contains(errors, e => e.Contains("ExternalResource") && e.Contains("tag") && e.Contains("not found"));
@@ -107,9 +111,10 @@ public class SnapshotValidatorTests
             new List<DataStore>(),
             new List<Server>(),
             new List<ExternalResource>(),
-            new List<Account>{ account },
+            new List<Account> { account },
             new List<Tag>(),
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         var errors = SnapshotValidator.Validate(snapshot);
         Assert.Contains(errors, e => e.Contains("Account") && e.Contains("Application") && e.Contains("not found"));
@@ -124,9 +129,10 @@ public class SnapshotValidatorTests
             new List<DataStore>(),
             new List<Server>(),
             new List<ExternalResource>(),
-            new List<Account>{ account },
+            new List<Account> { account },
             new List<Tag>(),
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         var errors = SnapshotValidator.Validate(snapshot);
         Assert.Contains(errors, e => e.Contains("Account") && e.Contains("DataStore") && e.Contains("not found"));
@@ -141,9 +147,10 @@ public class SnapshotValidatorTests
             new List<DataStore>(),
             new List<Server>(),
             new List<ExternalResource>(),
-            new List<Account>{ account },
+            new List<Account> { account },
             new List<Tag>(),
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         var errors = SnapshotValidator.Validate(snapshot);
         Assert.Contains(errors, e => e.Contains("Account") && e.Contains("External") && e.Contains("not found"));
@@ -162,13 +169,14 @@ public class SnapshotValidatorTests
             new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
 
         var snapshot = new Snapshot(
-            new List<Application>{ new Application(appId, "app", null, null, null, null, null, null, new HashSet<Guid>(), new List<ApplicationInstance>{ inst }, new List<ApplicationPipeline>(), DateTime.UtcNow, DateTime.UtcNow) },
+            new List<Application> { new Application(appId, "app", null, null, null, null, null, null, new HashSet<Guid>(), new List<ApplicationInstance> { inst }, new List<ApplicationPipeline>(), DateTime.UtcNow, DateTime.UtcNow) },
             new List<DataStore>(),
             new List<Server>(),
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo> { new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -188,13 +196,14 @@ public class SnapshotValidatorTests
             new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
 
         var snapshot = new Snapshot(
-            new List<Application>{ new Application(appId, "app", null, null, null, null, null, null, new HashSet<Guid>(), new List<ApplicationInstance>{ inst }, new List<ApplicationPipeline>(), DateTime.UtcNow, DateTime.UtcNow) },
+            new List<Application> { new Application(appId, "app", null, null, null, null, null, null, new HashSet<Guid>(), new List<ApplicationInstance> { inst }, new List<ApplicationPipeline>(), DateTime.UtcNow, DateTime.UtcNow) },
             new List<DataStore>(),
             new List<Server>(),
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo> { new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -220,7 +229,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -242,7 +252,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -266,7 +277,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -292,7 +304,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -318,7 +331,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -340,7 +354,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -363,7 +378,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             new List<Tag>(),
-            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) }
+            new List<EnvironmentInfo>{ new EnvironmentInfo(envId, "env", null, new HashSet<Guid>()) },
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -390,7 +406,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             tags,
-            envs
+            envs,
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -418,7 +435,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             tags,
-            envs
+            envs,
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
 
         var errors = SnapshotValidator.Validate(snapshot);
@@ -438,7 +456,8 @@ public class SnapshotValidatorTests
             new List<ExternalResource>(),
             new List<Account>(),
             tags,
-            new List<EnvironmentInfo>()
+            new List<EnvironmentInfo>(),
+            new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         var errors = SnapshotValidator.Validate(snapshot);
         Assert.Contains("Duplicate Tag Ids detected", errors);

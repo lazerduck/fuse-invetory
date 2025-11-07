@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Fuse.Core.Models;
 
 namespace Fuse.Core.Helpers;
@@ -89,6 +91,25 @@ public static class SnapshotValidator
         // ExternalResources
         foreach (var er in s.ExternalResources)
             TagsMustExist(er.TagIds, $"ExternalResource {er.Id}");
+
+        // Security Users
+        if (s.Security.Users.Count > 0 && !s.Security.Users.Any(u => u.Role == SecurityRole.Admin))
+            errs.Add("At least one admin user is required for security settings.");
+
+        var duplicateUsers = s.Security.Users
+            .GroupBy(u => u.UserName, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        foreach (var user in duplicateUsers)
+            errs.Add($"Duplicate security user name detected: {user}");
+
+        if (s.Security.Users.Any(u => string.IsNullOrWhiteSpace(u.UserName)))
+            errs.Add("Security user names cannot be empty.");
+
+        if (s.Security.Users.Any(u => string.IsNullOrWhiteSpace(u.PasswordHash) || string.IsNullOrWhiteSpace(u.PasswordSalt)))
+            errs.Add("Security user credentials are invalid.");
 
         return errs;
     }

@@ -19,7 +19,8 @@ public class TagServiceTests
             ExternalResources: Array.Empty<ExternalResource>(),
             Accounts: Array.Empty<Account>(),
             Tags: tags,
-            Environments: Array.Empty<EnvironmentInfo>()
+            Environments: Array.Empty<EnvironmentInfo>(),
+            Security: new SecurityState(new SecuritySettings(SecurityLevel.FullyRestricted, DateTime.UtcNow), Array.Empty<SecurityUser>())
         );
         return new InMemoryFuseStore(snapshot);
     }
