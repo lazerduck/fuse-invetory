@@ -56,7 +56,7 @@
 import { computed, reactive, onMounted, watch } from 'vue'
 import { useEnvironments } from '../../composables/useEnvironments'
 import { useTags } from '../../composables/useTags'
-import type { Server, ServerOperatingSystem } from '../../api/client'
+import { ServerOperatingSystem, type Server } from '../../api/client'
 
 type Mode = 'create' | 'edit'
 
@@ -92,8 +92,8 @@ const tagsStore = useTags()
 const environmentOptions = environmentsStore.options
 const tagOptions = tagsStore.options
 
-const operatingSystemOptions = Object.values(({} as any as typeof import('../../api/client').ServerOperatingSystem))
-  .map((value: any) => ({ label: value, value }))
+const operatingSystemOptions = Object.values(ServerOperatingSystem)
+  .map(value => ({ label: value, value: value as ServerOperatingSystem }))
 
 const form = reactive<ServerFormModel>({
   name: '',
