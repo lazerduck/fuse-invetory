@@ -66,118 +66,20 @@
       </q-table>
     </q-card>
 
-    <q-dialog v-model="isCreateDialogOpen" persistent>
-      <q-card class="form-dialog">
-        <q-card-section class="dialog-header">
-          <div class="text-h6">Create Data Store</div>
-          <q-btn flat round dense icon="close" @click="isCreateDialogOpen = false" />
-        </q-card-section>
-        <q-separator />
-        <q-form @submit.prevent="submitCreate">
-          <q-card-section>
-            <div class="form-grid">
-              <q-input v-model="createForm.name" label="Name" dense outlined />
-              <q-input v-model="createForm.kind" label="Kind" dense outlined />
-              <q-select
-                v-model="createForm.environmentId"
-                label="Environment"
-                dense
-                outlined
-                emit-value
-                map-options
-                :options="environmentOptions"
-              />
-              <q-select
-                v-model="createForm.serverId"
-                label="Server"
-                dense
-                outlined
-                emit-value
-                map-options
-                clearable
-                :options="serverOptions"
-              />
-              <q-input v-model="createForm.connectionUri" label="Connection URI" dense outlined />
-              <q-select
-                v-model="createForm.tagIds"
-                label="Tags"
-                dense
-                outlined
-                use-chips
-                multiple
-                emit-value
-                map-options
-                :options="tagOptions"
-              />
-            </div>
-          </q-card-section>
-          <q-separator />
-          <q-card-actions align="right">
-            <q-btn flat label="Cancel" @click="isCreateDialogOpen = false" />
-            <q-btn color="primary" type="submit" label="Create" :loading="createMutation.isPending.value" />
-          </q-card-actions>
-        </q-form>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="isEditDialogOpen" persistent>
-      <q-card class="form-dialog">
-        <q-card-section class="dialog-header">
-          <div class="text-h6">Edit Data Store</div>
-          <q-btn flat round dense icon="close" @click="closeEditDialog" />
-        </q-card-section>
-        <q-separator />
-        <q-form @submit.prevent="submitEdit">
-          <q-card-section>
-            <div class="form-grid">
-              <q-input v-model="editForm.name" label="Name" dense outlined />
-              <q-input v-model="editForm.kind" label="Kind" dense outlined />
-              <q-select
-                v-model="editForm.environmentId"
-                label="Environment"
-                dense
-                outlined
-                emit-value
-                map-options
-                :options="environmentOptions"
-              />
-              <q-select
-                v-model="editForm.serverId"
-                label="Server"
-                dense
-                outlined
-                emit-value
-                map-options
-                clearable
-                :options="serverOptions"
-              />
-              <q-input v-model="editForm.connectionUri" label="Connection URI" dense outlined />
-              <q-select
-                v-model="editForm.tagIds"
-                label="Tags"
-                dense
-                outlined
-                use-chips
-                multiple
-                emit-value
-                map-options
-                :options="tagOptions"
-              />
-            </div>
-          </q-card-section>
-          <q-separator />
-          <q-card-actions align="right">
-            <q-btn flat label="Cancel" @click="closeEditDialog" />
-            <q-btn color="primary" type="submit" label="Save" :loading="updateMutation.isPending.value" />
-          </q-card-actions>
-        </q-form>
-      </q-card>
+    <q-dialog v-model="isFormDialogOpen" persistent>
+      <DataStoreForm
+        :mode="selectedDataStore ? 'edit' : 'create'"
+        :initial-value="selectedDataStore"
+        :loading="formLoading"
+        @submit="handleFormSubmit"
+        @cancel="closeFormDialog"
+      />
     </q-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { Notify, Dialog } from 'quasar'
 import type { QTableColumn } from 'quasar'
@@ -187,8 +89,9 @@ import { useEnvironments } from '../composables/useEnvironments'
 import { useServers } from '../composables/useServers'
 import { useTags } from '../composables/useTags'
 import { getErrorMessage } from '../utils/error'
+import DataStoreForm from '../components/dataStore/DataStoreForm.vue'
 
-interface DataStoreForm {
+interface DataStoreFormModel {
   name: string
   kind: string
   environmentId: string | null
@@ -213,11 +116,8 @@ const { data, isLoading, error } = useQuery({
 const dataStores = computed(() => data.value ?? [])
 const dataStoreError = computed(() => (error.value ? getErrorMessage(error.value) : null))
 
-const environmentOptions = environmentsStore.options
 const environmentLookup = environmentsStore.lookup
-const serverOptions = serversStore.options
 const serverLookup = serversStore.lookup
-const tagOptions = tagsStore.options
 const tagLookup = tagsStore.lookup
 
 const columns: QTableColumn<DataStore>[] = [
@@ -230,45 +130,23 @@ const columns: QTableColumn<DataStore>[] = [
   { name: 'actions', label: '', field: (row) => row.id, align: 'right' }
 ]
 
-const emptyForm = (): DataStoreForm => ({
-  name: '',
-  kind: '',
-  environmentId: null,
-  serverId: null,
-  connectionUri: '',
-  tagIds: []
-})
-
-const isCreateDialogOpen = ref(false)
-const isEditDialogOpen = ref(false)
+const isFormDialogOpen = ref(false)
 const selectedDataStore = ref<DataStore | null>(null)
 
-const createForm = reactive<DataStoreForm>(emptyForm())
-const editForm = reactive<DataStoreForm & { id: string | null }>({ id: null, ...emptyForm() })
-
 function openCreateDialog() {
-  Object.assign(createForm, emptyForm())
-  isCreateDialogOpen.value = true
+  selectedDataStore.value = null
+  isFormDialogOpen.value = true
 }
 
 function openEditDialog(store: DataStore) {
   if (!store.id) return
   selectedDataStore.value = store
-  Object.assign(editForm, {
-    id: store.id ?? null,
-    name: store.name ?? '',
-    kind: store.kind ?? '',
-    environmentId: store.environmentId ?? null,
-    serverId: store.serverId ?? null,
-    connectionUri: store.connectionUri ?? '',
-    tagIds: [...(store.tagIds ?? [])]
-  })
-  isEditDialogOpen.value = true
+  isFormDialogOpen.value = true
 }
 
-function closeEditDialog() {
+function closeFormDialog() {
   selectedDataStore.value = null
-  isEditDialogOpen.value = false
+  isFormDialogOpen.value = false
 }
 
 const createMutation = useMutation({
@@ -276,7 +154,7 @@ const createMutation = useMutation({
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['dataStores'] })
     Notify.create({ type: 'positive', message: 'Data store created' })
-    isCreateDialogOpen.value = false
+  closeFormDialog()
   },
   onError: (err) => {
     Notify.create({ type: 'negative', message: getErrorMessage(err, 'Unable to create data store') })
@@ -288,7 +166,7 @@ const updateMutation = useMutation({
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['dataStores'] })
     Notify.create({ type: 'positive', message: 'Data store updated' })
-    closeEditDialog()
+  closeFormDialog()
   },
   onError: (err) => {
     Notify.create({ type: 'negative', message: getErrorMessage(err, 'Unable to update data store') })
@@ -306,29 +184,32 @@ const deleteMutation = useMutation({
   }
 })
 
-function submitCreate() {
-  const payload = Object.assign(new CreateDataStore(), {
-    name: createForm.name || undefined,
-    kind: createForm.kind || undefined,
-    environmentId: createForm.environmentId || undefined,
-    serverId: createForm.serverId || undefined,
-    connectionUri: createForm.connectionUri || undefined,
-    tagIds: createForm.tagIds.length ? [...createForm.tagIds] : undefined
-  })
-  createMutation.mutate(payload)
-}
+const formLoading = computed(() =>
+  selectedDataStore.value ? updateMutation.isPending.value : createMutation.isPending.value
+)
 
-function submitEdit() {
-  if (!editForm.id) return
-  const payload = Object.assign(new UpdateDataStore(), {
-    name: editForm.name || undefined,
-    kind: editForm.kind || undefined,
-    environmentId: editForm.environmentId || undefined,
-    serverId: editForm.serverId || undefined,
-    connectionUri: editForm.connectionUri || undefined,
-    tagIds: editForm.tagIds.length ? [...editForm.tagIds] : undefined
-  })
-  updateMutation.mutate({ id: editForm.id, payload })
+function handleFormSubmit(values: DataStoreFormModel) {
+  if (selectedDataStore.value?.id) {
+    const payload = Object.assign(new UpdateDataStore(), {
+      name: values.name || undefined,
+      kind: values.kind || undefined,
+      environmentId: values.environmentId || undefined,
+      serverId: values.serverId || undefined,
+      connectionUri: values.connectionUri || undefined,
+      tagIds: values.tagIds.length ? [...values.tagIds] : undefined
+    })
+    updateMutation.mutate({ id: selectedDataStore.value.id, payload })
+  } else {
+    const payload = Object.assign(new CreateDataStore(), {
+      name: values.name || undefined,
+      kind: values.kind || undefined,
+      environmentId: values.environmentId || undefined,
+      serverId: values.serverId || undefined,
+      connectionUri: values.connectionUri || undefined,
+      tagIds: values.tagIds.length ? [...values.tagIds] : undefined
+    })
+    createMutation.mutate(payload)
+  }
 }
 
 function confirmDelete(store: DataStore) {
