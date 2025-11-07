@@ -56,7 +56,11 @@ else
 
 app.UseHttpsRedirection();
 
-app.UseMiddleware<SecurityMiddleware>();
+// Apply security only to API routes so SPA static files and fallback aren't blocked
+app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/api"), branch =>
+{
+    branch.UseMiddleware<SecurityMiddleware>();
+});
 
 app.MapControllers();
 
