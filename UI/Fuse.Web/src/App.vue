@@ -149,6 +149,24 @@
             </q-item-section>
           </q-item>
 
+          <q-separator class="q-my-md" />
+
+          <q-item
+            clickable
+            v-ripple
+            :to="{ name: 'graph' }"
+            active-class="bg-primary text-white"
+          >
+            <q-item-section avatar>
+              <q-icon name="account_tree" />
+            </q-item-section>
+            <q-item-section>
+              Graph View
+            </q-item-section>
+          </q-item>
+
+          <q-separator class="q-my-md" />
+
           <q-item
             clickable
             v-ripple
