@@ -164,6 +164,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Notify } from 'quasar'
+import { useQueryClient } from '@tanstack/vue-query'
+
+const queryClient = useQueryClient()
 
 const exportFormat = ref<'json' | 'yaml'>('json')
 const templateFormat = ref<'json' | 'yaml'>('json')
@@ -296,7 +299,7 @@ async function handleImport() {
       throw new Error(errorData.error || 'Import failed')
     }
 
-    successMessage.value = 'Configuration imported successfully. Page will reload to show updated data.'
+    successMessage.value = 'Configuration imported successfully. Data has been refreshed.'
     
     Notify.create({
       type: 'positive',
@@ -306,10 +309,8 @@ async function handleImport() {
     // Clear the file input
     importFile.value = null
 
-    // Reload the page after a short delay to show updated data
-    setTimeout(() => {
-      window.location.reload()
-    }, 2000)
+    // Invalidate all queries to refresh data
+    await queryClient.invalidateQueries()
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Failed to import configuration'
     error.value = errorMessage
