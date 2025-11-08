@@ -118,10 +118,13 @@ const environmentsQuery = useEnvironments()
 const externalResourcesQuery = useExternalResources()
 const dataStoresQuery = useDataStores()
 
+// Consider all query loading states so we don't initialize prematurely
 const isLoading = computed(() => 
   applicationsQuery.isLoading.value || 
   serversQuery.isLoading.value || 
-  environmentsQuery.isLoading.value
+  environmentsQuery.isLoading.value ||
+  externalResourcesQuery.isLoading.value ||
+  dataStoresQuery.isLoading.value
 )
 
 // Filter options
@@ -143,6 +146,9 @@ const nodeTypeOptions = [
 
 // Network instance
 let network: Network | null = null
+// Reusable DataSet instances to avoid re-triggering full physics recalculations
+let nodesDataSet: DataSet<GraphNode> | null = null
+let edgesDataSet: DataSet<GraphEdge> | null = null
 
 interface GraphNode {
   id: string
@@ -365,12 +371,13 @@ const graphData = computed(() => {
 function initNetwork() {
   if (!graphContainer.value) return
 
-  const nodes = new DataSet(graphData.value.nodes)
-  const edges = new DataSet(graphData.value.edges)
+  // Reuse datasets to prevent repeated allocation & physics restarts
+  nodesDataSet = new DataSet(graphData.value.nodes)
+  edgesDataSet = new DataSet(graphData.value.edges)
 
   const data = {
-    nodes: nodes,
-    edges: edges
+    nodes: nodesDataSet,
+    edges: edgesDataSet
   }
 
   const options = {
@@ -398,14 +405,14 @@ function initNetwork() {
     physics: {
       enabled: true,
       barnesHut: {
-        gravitationalConstant: -2000,
+        gravitationalConstant: -1200, // Slightly less intense to reduce CPU
         centralGravity: 0.3,
         springLength: 150,
         springConstant: 0.04,
-        damping: 0.09
+        damping: 0.12
       },
       stabilization: {
-        iterations: 150
+        iterations: 120
       }
     },
     interaction: {
@@ -422,7 +429,18 @@ function initNetwork() {
 
   network = new Network(graphContainer.value, data, options)
 
-  // Add click handler for nodes
+  // Disable physics automatically after stabilization to avoid runaway CPU usage
+  network.once('stabilizationIterationsDone', () => {
+    if (!network) return
+    // If graph is very large keep physics off after initial layout
+    const nodeCount = graphData.value.nodes.length
+    if (nodeCount > 300) {
+      console.warn('[Graph] Large node count detected, disabling physics post-stabilization.')
+    }
+    network.setOptions({ physics: false })
+  })
+
+  // Click handler for future detail panels
   network.on('click', (params) => {
     if (params.nodes.length > 0) {
       const nodeId = params.nodes[0]
@@ -432,15 +450,19 @@ function initNetwork() {
 }
 
 function updateNetwork() {
-  if (!network) return
+  if (!network || !nodesDataSet || !edgesDataSet) return
 
-  const nodes = new DataSet(graphData.value.nodes)
-  const edges = new DataSet(graphData.value.edges)
+  // Efficiently update existing datasets instead of recreating them
+  nodesDataSet.clear()
+  edgesDataSet.clear()
+  nodesDataSet.add(graphData.value.nodes)
+  edgesDataSet.add(graphData.value.edges)
 
-  network.setData({
-    nodes: nodes,
-    edges: edges
-  })
+  // Fit view lightly after major changes (skip if extremely large)
+  const total = graphData.value.nodes.length + graphData.value.edges.length
+  if (total < 1000) {
+    try { network.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } }) } catch {}
+  }
 }
 
 function resetView() {
@@ -452,12 +474,10 @@ function resetView() {
   }
 }
 
-// Watch for data changes and update the network
+// Watch for data changes and update the network (no deep watch needed)
 watch(graphData, () => {
-  if (network) {
-    updateNetwork()
-  }
-}, { deep: true })
+  if (network) updateNetwork()
+})
 
 onMounted(() => {
   // Wait a bit for the container to be ready
