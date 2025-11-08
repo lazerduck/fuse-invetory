@@ -216,6 +216,21 @@
             </q-item-section>
           </q-item>
 
+          <q-item
+            clickable
+            v-ripple
+            :to="{ name: 'config' }"
+            active-class="bg-primary text-white"
+            data-tour-id="nav-config"
+          >
+            <q-item-section avatar>
+              <q-icon name="settings" />
+            </q-item-section>
+            <q-item-section>
+              Config
+            </q-item-section>
+          </q-item>
+
           <q-separator class="q-my-md" />
 
           <q-item
