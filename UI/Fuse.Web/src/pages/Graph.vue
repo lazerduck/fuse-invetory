@@ -1,12 +1,27 @@
 <template>
-  <div class="page-container">
+  <div class="page-container graph-page">
     <div class="page-header">
       <div>
         <h1>Graph</h1>
         <p class="subtitle">Visualize relationships between entities.</p>
       </div>
     </div>
-    <q-card class="content-card">
+    <div class="graph-filters">
+      <q-select
+        v-model="selectedEnvIds"
+        :options="environmentStore.options.value"
+        multiple
+        emit-value
+        map-options
+        dense
+        clearable
+        label="Filter environments"
+        class="env-select"
+        :disable="environmentStore.isLoading.value"
+        hint="Select one or more environments to display"
+      />
+    </div>
+    <q-card class="content-card graph-card">
       <div ref="graphEl" class="graph"></div>
     </q-card>
   </div>
@@ -40,11 +55,17 @@ const isLoading = computed(() =>
   externalServicesStore.isLoading.value
 );
 
+// Selected environment IDs for filtering (multi-select)
+const selectedEnvIds = ref<string[]>([])
+
 watch(isLoading, (newVal) => {
   if (!newVal) {
     refreshGraph();
   }
 });
+
+// Refresh on environment selection changes
+watch(selectedEnvIds, () => refreshGraph())
 
 function refreshGraph() {
   if (!cy) return
@@ -62,23 +83,30 @@ function refreshGraph() {
   // Build node elements
   const nodes: ElementDefinition[] = []
 
+  // Determine selected environments
+  const selectedSet = new Set<string>(selectedEnvIds.value)
+  if (selectedSet.size === 0 && environments.length) {
+    for (const env of environments) if (env?.id) selectedSet.add(env.id)
+    selectedEnvIds.value = Array.from(selectedSet)
+  }
+
   for (const env of environments) {
     if (!env?.id) continue
+    if (!selectedSet.has(env.id)) continue
     nodes.push({ data: { id: `env-${env.id}`, label: env.name || env.id, type: 'environment' } })
   }
 
   for (const ds of dataStores) {
     if (!ds?.id) continue
+    if (ds.environmentId && !selectedSet.has(ds.environmentId)) continue
     nodes.push({ data: { id: `ds-${ds.id}`, label: ds.name || ds.id, parent: ds.environmentId ? `env-${ds.environmentId}` : undefined, type: 'datastore' } })
   }
 
-  for (const ex of externals) {
-    if (!ex?.id) continue
-    nodes.push({ data: { id: `ext-${ex.id}`, label: ex.name || ex.id, type: 'external' } })
-  }
+  // External nodes are added later only if referenced by edges
 
   for (const { app, inst } of appInstances) {
     if (!inst?.id) continue
+    if(inst.environmentId && !selectedSet.has(inst.environmentId)) continue;
     nodes.push({
       data: {
         id: `appi-${inst.id}`,
@@ -91,8 +119,10 @@ function refreshGraph() {
 
   // Build edges for dependencies of app instances
   const edges: ElementDefinition[] = []
+  const usedExternalIds = new Set<string>()
   for (const { inst } of appInstances) {
     if (!inst?.id) continue
+    if (inst.environmentId && !selectedSet.has(inst.environmentId)) continue
     for (const dep of inst.dependencies ?? []) {
       if (!dep?.id || !dep.targetId) continue
       let targetPrefix: string | null = null
@@ -116,7 +146,15 @@ function refreshGraph() {
           type: 'depends'
         }
       })
+      if (targetPrefix === 'ext') usedExternalIds.add(dep.targetId)
     }
+  }
+
+  // Add only external nodes that are actually targeted by edges
+  for (const ex of externals) {
+    if (!ex?.id) continue
+    if (!usedExternalIds.has(ex.id)) continue
+    nodes.push({ data: { id: `ext-${ex.id}`, label: ex.name || ex.id, type: 'external' } })
   }
 
   cy.elements().remove()
@@ -175,7 +213,21 @@ onMounted(() => {
 .graph {
   width: 100%;
   height: 100%;
-  min-height: 400px; /* fallback if card has no height */
+  flex: 1 1 auto;
+  min-height: 400px; /* fallback if container can't stretch */
+  min-width: 0; /* allow flex shrink */
   outline: none;
+}
+
+/* Make the page and card stretch to available viewport height */
+.graph-page {
+  min-height: 100vh;
+}
+
+.graph-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 </style>
