@@ -3,23 +3,27 @@ using Fuse.Core.Models;
 
 namespace Fuse.Core.Commands;
 
-public record CreateServer(
-    string Name,
-    string Hostname,
-    ServerOperatingSystem? OperatingSystem,
-    Guid EnvironmentId,
+public record CreatePlatform(
+    string DisplayName,
+    string? DnsName = null,
+    string? Os = null,
+    PlatformKind? Kind = null,
+    string? IpAddress = null,
+    string? Notes = null,
     HashSet<Guid>? TagIds = null
 );
 
-public record UpdateServer(
+public record UpdatePlatform(
     Guid Id,
-    string Name,
-    string Hostname,
-    ServerOperatingSystem? OperatingSystem,
-    Guid EnvironmentId,
+    string DisplayName,
+    string? DnsName = null,
+    string? Os = null,
+    PlatformKind? Kind = null,
+    string? IpAddress = null,
+    string? Notes = null,
     HashSet<Guid>? TagIds = null
 );
 
-public record DeleteServer(
+public record DeletePlatform(
     Guid Id
 );

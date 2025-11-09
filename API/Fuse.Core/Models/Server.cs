@@ -1,22 +1,23 @@
 namespace Fuse.Core.Models;
 
-public record Server
+public record Platform
 (
     Guid Id,
-    string Name,
-    string? Description,
-    string Hostname,
-    ServerOperatingSystem? OperatingSystem,
-    Guid EnvironmentId,
+    string DisplayName,
+    string? DnsName,
+    string? Os,
+    PlatformKind? Kind,
+    string? IpAddress,
+    string? Notes,
     HashSet<Guid> TagIds,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
 
-public enum ServerOperatingSystem
+public enum PlatformKind
 {
-    Linux,
-    Windows,
-    MacOS,
-    Other
+    Server,
+    Cluster,
+    Serverless,
+    ContainerHost
 }

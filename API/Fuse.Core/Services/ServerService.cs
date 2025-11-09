@@ -5,110 +5,104 @@ using Fuse.Core.Models;
 
 namespace Fuse.Core.Services;
 
-public class ServerService : IServerService
+public class PlatformService : IPlatformService
 {
     private readonly IFuseStore _fuseStore;
     private readonly ITagService _tagService;
 
-    public ServerService(IFuseStore fuseStore, ITagService tagService)
+    public PlatformService(IFuseStore fuseStore, ITagService tagService)
     {
         _fuseStore = fuseStore;
         _tagService = tagService;
     }
 
-    public async Task<IReadOnlyList<Server>> GetServersAsync()
-        => (await _fuseStore.GetAsync()).Servers;
+    public async Task<IReadOnlyList<Platform>> GetPlatformsAsync()
+        => (await _fuseStore.GetAsync()).Platforms;
 
-    public async Task<Server?> GetServerByIdAsync(Guid id)
-        => (await _fuseStore.GetAsync()).Servers.FirstOrDefault(s => s.Id == id);
+    public async Task<Platform?> GetPlatformByIdAsync(Guid id)
+        => (await _fuseStore.GetAsync()).Platforms.FirstOrDefault(s => s.Id == id);
 
-    public async Task<Result<Server>> CreateServerAsync(CreateServer command)
+    public async Task<Result<Platform>> CreatePlatformAsync(CreatePlatform command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
-            return Result<Server>.Failure("Server name cannot be empty.", ErrorType.Validation);
-        if (string.IsNullOrWhiteSpace(command.Hostname))
-            return Result<Server>.Failure("Hostname cannot be empty.", ErrorType.Validation);
+        if (string.IsNullOrWhiteSpace(command.DisplayName))
+            return Result<Platform>.Failure("Platform display name cannot be empty.", ErrorType.Validation);
 
         var store = await _fuseStore.GetAsync();
-        // Environment must exist
-        if (!store.Environments.Any(e => e.Id == command.EnvironmentId))
-            return Result<Server>.Failure($"Environment with ID '{command.EnvironmentId}' not found.", ErrorType.Validation);
 
         // Validate tags
         var tagIds = command.TagIds ?? new HashSet<Guid>();
         foreach (var tagId in tagIds)
         {
             if (await _tagService.GetTagByIdAsync(tagId) is null)
-                return Result<Server>.Failure($"Tag with ID '{tagId}' not found.", ErrorType.Validation);
+                return Result<Platform>.Failure($"Tag with ID '{tagId}' not found.", ErrorType.Validation);
         }
 
-        // Unique name per environment
-        if (store.Servers.Any(s => s.EnvironmentId == command.EnvironmentId && string.Equals(s.Name, command.Name, StringComparison.OrdinalIgnoreCase)))
-            return Result<Server>.Failure($"Server with name '{command.Name}' already exists in this environment.", ErrorType.Conflict);
+        // Unique display name globally
+        if (store.Platforms.Any(s => string.Equals(s.DisplayName, command.DisplayName, StringComparison.OrdinalIgnoreCase)))
+            return Result<Platform>.Failure($"Platform with display name '{command.DisplayName}' already exists.", ErrorType.Conflict);
 
         var now = DateTime.UtcNow;
-        var server = new Server(
+        var platform = new Platform(
             Id: Guid.NewGuid(),
-            Name: command.Name,
-            Description: null,
-            Hostname: command.Hostname,
-            OperatingSystem: command.OperatingSystem,
-            EnvironmentId: command.EnvironmentId,
+            DisplayName: command.DisplayName,
+            DnsName: command.DnsName,
+            Os: command.Os,
+            Kind: command.Kind,
+            IpAddress: command.IpAddress,
+            Notes: command.Notes,
             TagIds: tagIds,
             CreatedAt: now,
             UpdatedAt: now
         );
 
-        await _fuseStore.UpdateAsync(s => s with { Servers = s.Servers.Append(server).ToList() });
-        return Result<Server>.Success(server);
+        await _fuseStore.UpdateAsync(s => s with { Platforms = s.Platforms.Append(platform).ToList() });
+        return Result<Platform>.Success(platform);
     }
 
-    public async Task<Result<Server>> UpdateServerAsync(UpdateServer command)
+    public async Task<Result<Platform>> UpdatePlatformAsync(UpdatePlatform command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
-            return Result<Server>.Failure("Server name cannot be empty.", ErrorType.Validation);
-        if (string.IsNullOrWhiteSpace(command.Hostname))
-            return Result<Server>.Failure("Hostname cannot be empty.", ErrorType.Validation);
+        if (string.IsNullOrWhiteSpace(command.DisplayName))
+            return Result<Platform>.Failure("Platform display name cannot be empty.", ErrorType.Validation);
 
         var store = await _fuseStore.GetAsync();
-        var existing = store.Servers.FirstOrDefault(s => s.Id == command.Id);
+        var existing = store.Platforms.FirstOrDefault(s => s.Id == command.Id);
         if (existing is null)
-            return Result<Server>.Failure($"Server with ID '{command.Id}' not found.", ErrorType.NotFound);
-
-        if (!store.Environments.Any(e => e.Id == command.EnvironmentId))
-            return Result<Server>.Failure($"Environment with ID '{command.EnvironmentId}' not found.", ErrorType.Validation);
+            return Result<Platform>.Failure($"Platform with ID '{command.Id}' not found.", ErrorType.NotFound);
 
         var tagIds = command.TagIds ?? new HashSet<Guid>();
         foreach (var tagId in tagIds)
         {
             if (await _tagService.GetTagByIdAsync(tagId) is null)
-                return Result<Server>.Failure($"Tag with ID '{tagId}' not found.", ErrorType.Validation);
+                return Result<Platform>.Failure($"Tag with ID '{tagId}' not found.", ErrorType.Validation);
         }
 
-        if (store.Servers.Any(s => s.Id != command.Id && s.EnvironmentId == command.EnvironmentId && string.Equals(s.Name, command.Name, StringComparison.OrdinalIgnoreCase)))
-            return Result<Server>.Failure($"Server with name '{command.Name}' already exists in this environment.", ErrorType.Conflict);
+        // Unique display name globally (excluding current platform)
+        if (store.Platforms.Any(s => s.Id != command.Id && string.Equals(s.DisplayName, command.DisplayName, StringComparison.OrdinalIgnoreCase)))
+            return Result<Platform>.Failure($"Platform with display name '{command.DisplayName}' already exists.", ErrorType.Conflict);
 
         var updated = existing with
         {
-            Name = command.Name,
-            Hostname = command.Hostname,
-            OperatingSystem = command.OperatingSystem,
-            EnvironmentId = command.EnvironmentId,
+            DisplayName = command.DisplayName,
+            DnsName = command.DnsName,
+            Os = command.Os,
+            Kind = command.Kind,
+            IpAddress = command.IpAddress,
+            Notes = command.Notes,
             TagIds = tagIds,
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _fuseStore.UpdateAsync(s => s with { Servers = s.Servers.Select(x => x.Id == command.Id ? updated : x).ToList() });
-        return Result<Server>.Success(updated);
+        await _fuseStore.UpdateAsync(s => s with { Platforms = s.Platforms.Select(x => x.Id == command.Id ? updated : x).ToList() });
+        return Result<Platform>.Success(updated);
     }
 
-    public async Task<Result> DeleteServerAsync(DeleteServer command)
+    public async Task<Result> DeletePlatformAsync(DeletePlatform command)
     {
         var store = await _fuseStore.GetAsync();
-        if (!store.Servers.Any(s => s.Id == command.Id))
-            return Result.Failure($"Server with ID '{command.Id}' not found.", ErrorType.NotFound);
+        if (!store.Platforms.Any(s => s.Id == command.Id))
+            return Result.Failure($"Platform with ID '{command.Id}' not found.", ErrorType.NotFound);
 
-        await _fuseStore.UpdateAsync(s => s with { Servers = s.Servers.Where(x => x.Id != command.Id).ToList() });
+        await _fuseStore.UpdateAsync(s => s with { Platforms = s.Platforms.Where(x => x.Id != command.Id).ToList() });
         return Result.Success();
     }
 }

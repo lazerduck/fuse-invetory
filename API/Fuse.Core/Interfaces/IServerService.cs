@@ -4,11 +4,11 @@ using Fuse.Core.Models;
 
 namespace Fuse.Core.Interfaces;
 
-public interface IServerService
+public interface IPlatformService
 {
-    Task<IReadOnlyList<Server>> GetServersAsync();
-    Task<Server?> GetServerByIdAsync(Guid id);
-    Task<Result<Server>> CreateServerAsync(CreateServer command);
-    Task<Result<Server>> UpdateServerAsync(UpdateServer command);
-    Task<Result> DeleteServerAsync(DeleteServer command);
+    Task<IReadOnlyList<Platform>> GetPlatformsAsync();
+    Task<Platform?> GetPlatformByIdAsync(Guid id);
+    Task<Result<Platform>> CreatePlatformAsync(CreatePlatform command);
+    Task<Result<Platform>> UpdatePlatformAsync(UpdatePlatform command);
+    Task<Result> DeletePlatformAsync(DeletePlatform command);
 }
