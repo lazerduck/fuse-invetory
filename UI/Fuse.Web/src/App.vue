@@ -150,7 +150,7 @@
               <q-icon name="dns" />
             </q-item-section>
             <q-item-section>
-              Servers
+              Platforms
             </q-item-section>
           </q-item>
 

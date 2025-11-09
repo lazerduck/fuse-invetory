@@ -37,13 +37,13 @@
           />
           <q-select
             v-model="form.platformId"
-            label="Server"
+            label="Platform"
             dense
             outlined
             emit-value
             map-options
             clearable
-            :options="serverOptions"
+            :options="platformOptions"
           />
           <q-input v-model="form.connectionUri" label="Connection URI" dense outlined />
           <q-select
@@ -105,11 +105,11 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const environmentsStore = useEnvironments()
-const serversStore = usePlatforms()
+const platformsStore = usePlatforms()
 const tagsStore = useTags()
 
 const environmentOptions = environmentsStore.options
-const serverOptions = serversStore.options
+const platformOptions = platformsStore.options
 const tagOptions = tagsStore.options
 
 const form = reactive<DataStoreFormModel>({

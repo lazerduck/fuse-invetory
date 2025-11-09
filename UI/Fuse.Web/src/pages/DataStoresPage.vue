@@ -34,9 +34,9 @@
             {{ environmentLookup[props.row.environmentId ?? ''] ?? '—' }}
           </q-td>
         </template>
-        <template #body-cell-server="props">
+        <template #body-cell-platform="props">
           <q-td :props="props">
-            {{ serverLookup[props.row.platformId ?? ''] ?? '—' }}
+            {{ platformLookup[props.row.platformId ?? ''] ?? '—' }}
           </q-td>
         </template>
         <template #body-cell-tags="props">
@@ -111,7 +111,7 @@ interface DataStoreFormModel {
 const client = useFuseClient()
 const queryClient = useQueryClient()
 const environmentsStore = useEnvironments()
-const serversStore = usePlatforms()
+const platformsStore = usePlatforms()
 const tagsStore = useTags()
 
 const pagination = { rowsPerPage: 10 }
@@ -122,7 +122,7 @@ const dataStores = computed(() => data.value ?? [])
 const dataStoreError = computed(() => (error.value ? getErrorMessage(error.value) : null))
 
 const environmentLookup = environmentsStore.lookup
-const serverLookup = serversStore.lookup
+const platformLookup = platformsStore.lookup
 const tagLookup = tagsStore.lookup
 
 const columns: QTableColumn<DataStore>[] = [
@@ -130,7 +130,7 @@ const columns: QTableColumn<DataStore>[] = [
   { name: 'kind', label: 'Kind', field: 'kind', align: 'left' },
   { name: 'connectionUri', label: 'Connection URI', field: 'connectionUri', align: 'left' },
   { name: 'environment', label: 'Environment', field: 'environmentId', align: 'left' },
-  { name: 'server', label: 'Server', field: 'platformId', align: 'left' },
+  { name: 'platform', label: 'Platform', field: 'platformId', align: 'left' },
   { name: 'tags', label: 'Tags', field: 'tagIds', align: 'left' },
   { name: 'actions', label: '', field: (row) => row.id, align: 'right' }
 ]

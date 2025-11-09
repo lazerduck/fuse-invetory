@@ -8,28 +8,21 @@
     <q-form @submit.prevent="handleSubmit">
       <q-card-section>
         <div class="form-grid">
-          <q-input v-model="form.displayName" label="Name*" dense outlined :rules="[v => !!v || 'Name is required']" />
-          <q-input v-model="form.dnsName" label="DNS Name*" dense outlined :rules="[v => !!v || 'DNS Name is required']" />
+          <q-input v-model="form.displayName" label="Name*" dense outlined :rules="[v => !!v || 'Display Name is required']" />
+          <q-input v-model="form.dnsName" label="DNS Name" dense outlined />
+          <q-input v-model="form.os" label="Operating System" dense outlined />
           <q-select
-            v-model="form.os"
-            label="Operating System"
+            v-model="form.kind"
+            label="Kind"
             dense
             outlined
             emit-value
             map-options
             clearable
-            :options="osOptions"
+            :options="kindOptions"
           />
-          <q-select
-            v-model="form."
-            label="*"
-            dense
-            outlined
-            emit-value
-            map-options
-            :options="environmentOptions"
-            :rules="[v => !!v || ' is required']"
-          />
+          <q-input v-model="form.ipAddress" label="IP Address" dense outlined />
+          <q-input v-model="form.notes" label="Notes" type="textarea" dense outlined />
           <q-select
             v-model="form.tagIds"
             label="Tags"
@@ -54,17 +47,18 @@
 
 <script setup lang="ts">
 import { computed, reactive, onMounted, watch } from 'vue'
-import { uses } from '../../composables/uses'
 import { useTags } from '../../composables/useTags'
-import { PlatformOperatingSystem, type Platform } from '../../api/client'
+import { PlatformKind, type Platform } from '../../api/client'
 
 type Mode = 'create' | 'edit'
 
-interface PlatformFormModel {
-  name: string
+export interface PlatformFormModel {
+  displayName: string
   dnsName: string
-  os: PlatformOperatingSystem | null
-  : string | null
+  os: string | null
+  kind: PlatformKind | null
+  ipAddress: string | null
+  notes: string | null
   tagIds: string[]
 }
 
@@ -86,20 +80,20 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emit = defineEmits<Emits>()
 
-const environmentsStore = uses()
 const tagsStore = useTags()
 
-const environmentOptions = environmentsStore.options
 const tagOptions = tagsStore.options
 
-const osOptions = Object.values(PlatformOperatingSystem)
-  .map(value => ({ label: value, value: value as PlatformOperatingSystem }))
+const kindOptions = Object.values(PlatformKind)
+  .map(value => ({ label: value, value: value as PlatformKind }))
 
 const form = reactive<PlatformFormModel>({
-  name: '',
+  displayName: '',
   dnsName: '',
   os: null,
-  : null,
+  kind: null,
+  ipAddress: null,
+  notes: null,
   tagIds: []
 })
 
@@ -113,14 +107,18 @@ function applyInitialValue(value?: Partial<Platform> | null) {
     form.displayName = ''
     form.dnsName = ''
     form.os = null
-    form. = null
     form.tagIds = []
+    form.kind = null
+    form.ipAddress = null
+    form.notes = null
     return
   }
   form.displayName = value.displayName ?? ''
   form.dnsName = value.dnsName ?? ''
-  form.os = (value.os as any) ?? null
-  form. = value. ?? null
+  form.os = value.os ?? null
+  form.kind = value.kind ?? null
+  form.ipAddress = value.ipAddress ?? null
+  form.notes = value.notes ?? null
   form.tagIds = [...(value.tagIds ?? [])]
 }
 

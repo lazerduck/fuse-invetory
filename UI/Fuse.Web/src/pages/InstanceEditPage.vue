@@ -35,14 +35,14 @@
             />
             <q-select
               v-model="form.platformId"
-              label="Server"
+              label="Platform"
               dense
               outlined
               emit-value
               map-options
               clearable
-              :options="serverOptions"
-              :disable="serverOptions.length === 0"
+              :options="platformOptions"
+              :disable="platformOptions.length === 0"
             />
             <q-input v-model="form.version" label="Version" dense outlined />
             <q-input v-model="form.baseUri" label="Base URI" dense outlined />
@@ -299,14 +299,14 @@ const accountsQuery = useQuery({
 
 const tagsStore = useTags()
 const environmentsStore = useEnvironments()
-const serversStore = usePlatforms()
+const platformsStore = usePlatforms()
 const dataStoresQuery = useDataStores()
 const externalResourcesQuery = useExternalResources()
 
 const environmentLookup = environmentsStore.lookup
 
 const environmentOptions = environmentsStore.options
-const serverOptions = serversStore.options
+const platformOptions = platformsStore.options
 const tagOptions = tagsStore.options
 
 const form = reactive({

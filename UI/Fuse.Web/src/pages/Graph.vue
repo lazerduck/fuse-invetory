@@ -43,14 +43,14 @@ let cy: Core | null = null
 
 const applicationStore = useApplications();
 const environmentStore = useEnvironments();
-const serversStore = usePlatforms()
+const platformsStore = usePlatforms()
 const dataStore = useDataStores();
 const externalServicesStore = useExternalResources();
 
 const isLoading = computed(() => 
   applicationStore.isLoading.value ||
   environmentStore.isLoading.value ||
-  serversStore.isLoading.value ||
+  platformsStore.isLoading.value ||
   dataStore.isLoading.value ||
   externalServicesStore.isLoading.value
 );

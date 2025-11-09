@@ -83,20 +83,12 @@ import { computed, ref } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { Notify, Dialog } from 'quasar'
 import type { QTableColumn } from 'quasar'
-import { Platform, PlatformOperatingSystem, CreatePlatform, UpdatePlatform } from '../api/client'
+import { Platform, CreatePlatform, UpdatePlatform } from '../api/client'
 import { useFuseClient } from '../composables/useFuseClient'
 import { useEnvironments } from '../composables/useEnvironments'
 import { useTags } from '../composables/useTags'
 import { getErrorMessage } from '../utils/error'
-import PlatformForm from '../components/platforms/PlatformForm.vue'
-
-interface PlatformFormModel {
-  name: string
-  dnsName: string
-  kind: PlatformOperatingSystem | null
-  environmentId: string | null
-  tagIds: string[]
-}
+import PlatformForm, { type PlatformFormModel } from '../components/platforms/PlatformForm.vue'
 
 const client = useFuseClient()
 const queryClient = useQueryClient()
@@ -117,10 +109,11 @@ const environmentLookup = environmentsStore.lookup
 const tagLookup = tagsStore.lookup
 
 const columns: QTableColumn<Platform>[] = [
-  { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
+  { name: 'name', label: 'Name', field: 'displayName', align: 'left', sortable: true },
   { name: 'dnsName', label: 'DNS Name', field: 'dnsName', align: 'left' },
-  { name: 'kind', label: 'Operating System', field: 'kind', align: 'left' },
-  { name: 'environment', label: 'Environment', field: 'environmentId', align: 'left' },
+  { name: 'os', label: 'Operating System', field: 'os', align: 'left' },
+  { name: 'kind', label: 'Kind', field: 'kind', align: 'left' },
+  { name: 'ipAddress', label: 'IP', field: 'ipAddress', align: 'left' },
   { name: 'tags', label: 'Tags', field: 'tagIds', align: 'left' },
   { name: 'actions', label: '', field: (row) => row.id, align: 'right' }
 ]
@@ -187,19 +180,23 @@ const isAnyPending = computed(() => createMutation.isPending.value || updateMuta
 function handleSubmit(model: PlatformFormModel) {
   if (dialogMode.value === 'create') {
     const payload = Object.assign(new CreatePlatform(), {
-      name: model.displayName || undefined,
+      displayName: model.displayName || undefined,
       dnsName: model.dnsName || undefined,
+      os: model.os || undefined,
       kind: model.kind || undefined,
-      environmentId: model.environmentId || undefined,
+      ipAddress: model.ipAddress || undefined,
+      notes: model.notes || undefined,
       tagIds: model.tagIds.length ? [...model.tagIds] : undefined
     })
     createMutation.mutate(payload)
   } else if (dialogMode.value === 'edit' && selectedPlatform.value?.id) {
     const payload = Object.assign(new UpdatePlatform(), {
-      name: model.displayName || undefined,
+      displayName: model.displayName || undefined,
       dnsName: model.dnsName || undefined,
+      os: model.os || undefined,
       kind: model.kind || undefined,
-      environmentId: model.environmentId || undefined,
+      ipAddress: model.ipAddress || undefined,
+      notes: model.notes || undefined,
       tagIds: model.tagIds.length ? [...model.tagIds] : undefined
     })
     updateMutation.mutate({ id: selectedPlatform.value.id, payload })

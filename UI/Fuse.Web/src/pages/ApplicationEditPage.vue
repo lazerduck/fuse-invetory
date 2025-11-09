@@ -54,9 +54,9 @@
             {{ environmentLookup[props.row.environmentId ?? ''] ?? '—' }}
           </q-td>
         </template>
-        <template #body-cell-server="props">
+        <template #body-cell-platform="props">
           <q-td :props="props">
-            {{ serverLookup[props.row.platformId ?? ''] ?? '—' }}
+            {{ platformLookup[props.row.platformId ?? ''] ?? '—' }}
           </q-td>
         </template>
         <template #body-cell-tags="props">
@@ -231,15 +231,15 @@ const applicationError = computed(() => {
 
 const tagsStore = useTags()
 const environmentsStore = useEnvironments()
-const serversStore = usePlatforms()
+const platformsStore = usePlatforms()
 
 const tagLookup = tagsStore.lookup
 const environmentLookup = environmentsStore.lookup
-const serverLookup = serversStore.lookup
+const platformLookup = platformsStore.lookup
 
 const instanceColumns: QTableColumn<ApplicationInstance>[] = [
   { name: 'environment', label: 'Environment', field: 'environmentId', align: 'left' },
-  { name: 'server', label: 'Server', field: 'platformId', align: 'left' },
+  { name: 'platform', label: 'Platform', field: 'platformId', align: 'left' },
   { name: 'version', label: 'Version', field: 'version', align: 'left' },
   { name: 'baseUri', label: 'Base URI', field: 'baseUri', align: 'left' },
   { name: 'healthUri', label: 'Health URI', field: 'healthUri', align: 'left' },
