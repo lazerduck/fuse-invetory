@@ -209,7 +209,7 @@
             data-tour-id="nav-tags"
           >
             <q-item-section avatar>
-              <q-icon name="graph" />
+              <q-icon name="insights" />
             </q-item-section>
             <q-item-section>
               Graph

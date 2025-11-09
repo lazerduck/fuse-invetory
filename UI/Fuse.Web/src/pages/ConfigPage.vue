@@ -7,11 +7,11 @@
       </div>
     </div>
 
-    <q-banner v-if="error" dense class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" dense :class="errorBannerClasses" class="q-mb-md">
       {{ error }}
     </q-banner>
 
-    <q-banner v-if="successMessage" dense class="bg-green-1 text-positive q-mb-md">
+    <q-banner v-if="successMessage" dense :class="successBannerClasses" class="q-mb-md">
       {{ successMessage }}
     </q-banner>
 
@@ -141,13 +141,13 @@
 
       <!-- Help Section -->
       <div class="col-12">
-        <q-card class="content-card bg-blue-1">
+        <q-card :class="helpCardClasses">
           <q-card-section>
             <div class="text-h6 q-mb-sm">
               <q-icon name="help_outline" class="q-mr-sm" />
               About Import/Export
             </div>
-            <ul class="q-pl-md text-grey-8">
+            <ul class="q-pl-md" :class="helpTextClass">
               <li><strong>Export:</strong> Creates a complete snapshot of your current configuration</li>
               <li><strong>Template:</strong> Provides example data to help you understand the file structure</li>
               <li><strong>Import:</strong> Merges uploaded data with existing configuration (additive mode)</li>
@@ -162,11 +162,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Notify } from 'quasar'
+import { ref, computed } from 'vue'
+import { Notify, useQuasar } from 'quasar'
 import { useQueryClient } from '@tanstack/vue-query'
 
 const queryClient = useQueryClient()
+const $q = useQuasar()
 
 const exportFormat = ref<'json' | 'yaml'>('json')
 const templateFormat = ref<'json' | 'yaml'>('json')
@@ -184,6 +185,21 @@ const formatOptions = [
   { label: 'JSON', value: 'json' },
   { label: 'YAML', value: 'yaml' }
 ]
+
+// Theme-aware classes
+const isDark = computed(() => $q.dark.isActive)
+
+const errorBannerClasses = computed(() =>
+  isDark.value ? 'bg-negative text-white' : 'bg-red-1 text-negative'
+)
+const successBannerClasses = computed(() =>
+  isDark.value ? 'bg-positive text-white' : 'bg-green-1 text-positive'
+)
+const helpCardClasses = computed(() => [
+  'content-card',
+  isDark.value ? 'bg-blue-10 text-white' : 'bg-blue-1'
+])
+const helpTextClass = computed(() => (isDark.value ? 'text-grey-3' : 'text-grey-8'))
 
 function clearMessages() {
   error.value = undefined
