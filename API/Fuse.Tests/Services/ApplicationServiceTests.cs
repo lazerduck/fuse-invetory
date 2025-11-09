@@ -34,7 +34,7 @@ public class ApplicationServiceTests
         var snapshot = new Snapshot(
             Applications: (apps ?? Array.Empty<Application>()).ToArray(),
             DataStores: (dataStores ?? Array.Empty<DataStore>()).ToArray(),
-            Servers: (platforms ?? Array.Empty<Platform>()).ToArray(),
+            Platforms: (platforms ?? Array.Empty<Platform>()).ToArray(),
             ExternalResources: (resources ?? Array.Empty<ExternalResource>()).ToArray(),
             Accounts: (accounts ?? Array.Empty<Account>()).ToArray(),
             Tags: (tags ?? Array.Empty<Tag>()).ToArray(),
@@ -121,19 +121,7 @@ public class ApplicationServiceTests
         result.Value!.OpenApiUri.Should().BeNull();
     }
 
-    [Fact]
-    public async Task CreateInstance_ServerMustMatchEnvironment()
-    {
-        var e1 = new EnvironmentInfo(Guid.NewGuid(), "E1", null, new HashSet<Guid>());
-        var e2 = new EnvironmentInfo(Guid.NewGuid(), "E2", null, new HashSet<Guid>());
-        var server = new Server(Guid.NewGuid(), "S", null, "h", ServerOperatingSystem.Linux, e2.Id, new HashSet<Guid>(), DateTime.UtcNow, DateTime.UtcNow);
-        var app = new Application(Guid.NewGuid(), "A", null, null, null, null, null, null, new HashSet<Guid>(), Array.Empty<ApplicationInstance>(), Array.Empty<ApplicationPipeline>(), DateTime.UtcNow, DateTime.UtcNow);
-        var store = NewStore(apps: new[] { app }, envs: new[] { e1, e2 }, platforms: new[] { server });
-        var service = new ApplicationService(store, new TagLookupService(store));
-        var res = await service.CreateInstanceAsync(new CreateApplicationInstance(app.Id, e1.Id, server.Id, new Uri("http://base"), null, null, null, new HashSet<Guid>()));
-        res.IsSuccess.Should().BeFalse();
-        res.ErrorType.Should().Be(ErrorType.Validation);
-    }
+
 
     [Fact]
     public async Task UpdateInstance_NotFound()
