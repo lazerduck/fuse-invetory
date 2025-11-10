@@ -164,15 +164,15 @@ public sealed class SecurityService : ISecurityService
 
         if (user is null)
         {
-            return Result<SecurityUser>.Failure("Use not found", ErrorType.NotFound);
+            return Result<SecurityUser>.Failure("User not found", ErrorType.NotFound);
         }
 
         await _store.UpdateAsync(s => s with
         {
-            Security = s.Security with { Users = s.Security.Users.Select(m => m.Id == command.Id ? m : m with { Role = command.Role }).ToList() }
+            Security = s.Security with { Users = s.Security.Users.Select(m => m.Id == command.Id ? m with { Role = command.Role } : m).ToList() }
         }, ct);
 
-        return Result<SecurityUser>.Success(user with { Role = command.Role })
+        return Result<SecurityUser>.Success(user with { Role = command.Role });
     }
 
     public async Task<Result> DeleteUser(DeleteUser command, CancellationToken ct)

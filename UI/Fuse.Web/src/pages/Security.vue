@@ -45,7 +45,8 @@
         </q-card-section>
       </q-card>
 
-      <q-card class="content-card">
+      <!-- Admin Only: User Accounts Table -->
+      <q-card v-if="isAdmin" class="content-card">
         <q-card-section class="q-pa-none">
           <div class="q-pa-md" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="text-h6">User Accounts</div>
@@ -65,7 +66,18 @@
           >
           <template #body-cell-actions="props">
           <q-td :props="props" class="text-right">
-            <q-btn flat dense round icon="edit" color="primary" @click="" />
+            <q-btn 
+              flat 
+              dense 
+              round 
+              icon="edit" 
+              color="primary" 
+              v-if="isAdmin"
+              :disable="isCurrentUser(props.row)"
+              @click="editItem(props.row)"
+            >
+              <q-tooltip v-if="isCurrentUser(props.row)">You cannot edit your own account</q-tooltip>
+            </q-btn>
             <q-btn
               flat
               dense
@@ -73,14 +85,31 @@
               icon="delete"
               color="negative"
               class="q-ml-xs"
-              @click=""
-            />
+              v-if="isAdmin"
+              :disable="isCurrentUser(props.row)"
+              @click="deleteItem(props.row)"
+            >
+              <q-tooltip v-if="isCurrentUser(props.row)">You cannot delete your own account</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
         <template #no-data>
-          <div class="q-pa-md text-grey-7">No data stores documented.</div>
+          <div class="q-pa-md text-grey-7">No Accounts available.</div>
         </template>
           </q-table>
+        </q-card-section>
+      </q-card>
+
+      <!-- Non-Admin: Access Denied -->
+      <q-card v-else class="content-card">
+        <q-card-section>
+          <div class="text-center q-pa-xl">
+            <q-icon name="lock" size="64px" color="grey-5" class="q-mb-md" />
+            <div class="text-h6 text-grey-7 q-mb-sm">Access Restricted</div>
+            <p class="text-body2 text-grey-6">
+              You don't have permission to view user accounts. Only administrators can access this section.
+            </p>
+          </div>
         </q-card-section>
       </q-card>
 
@@ -88,6 +117,17 @@
       <q-dialog v-model="isCreateDialogOpen" persistent>
         <CreateSecurityAccount :loading="createAccountMutation.isPending.value" @submit="handleCreateAccount"
           @cancel="isCreateDialogOpen = false" />
+      </q-dialog>
+
+      <!-- Edit User Dialog -->
+      <q-dialog v-model="isEditDialogOpen" persistent>
+        <EditSecurityAccount 
+          v-if="selectedUser"
+          :user="selectedUser"
+          :loading="updateUserMutation.isPending.value" 
+          @submit="handleEditUser"
+          @cancel="closeEditDialog" 
+        />
       </q-dialog>
 
       <!-- Edit Security Level Dialog -->
@@ -140,11 +180,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
-import { Notify, QTable, type QTableColumn } from 'quasar'
+import { Notify, QTable, type QTableColumn, Dialog } from 'quasar'
 import { useFuseStore } from '../stores/FuseStore'
 import { useFuseClient } from '../composables/useFuseClient'
-import { CreateSecurityUser, SecurityLevel, SecurityRole, SecurityUser, UpdateSecuritySettings } from '../api/client'
+import { CreateSecurityUser, SecurityLevel, SecurityRole, SecurityUserResponse, UpdateSecuritySettings, UpdateUser } from '../api/client'
 import CreateSecurityAccount from '../components/security/CreateSecurityAccount.vue'
+import EditSecurityAccount from '../components/security/EditSecurityAccount.vue'
 import { getErrorMessage } from '../utils/error'
 import { useSecurities } from '../composables/useSecurity'
 
@@ -155,8 +196,10 @@ const client = useFuseClient()
 const pagination = { rowsPerPage: 10 }
 
 const isCreateDialogOpen = ref(false)
+const isEditDialogOpen = ref(false)
 const isEditSecurityLevelDialogOpen = ref(false)
 const selectedSecurityLevel = ref<SecurityLevel | null>(null)
+const selectedUser = ref<SecurityUserResponse | null>(null)
 const securityError = ref<string | null>(null)
 
 const {data, isLoading } = useSecurities()
@@ -165,7 +208,7 @@ const users = computed(() => data.value ?? [])
 
 const isAdmin = computed(() => fuseStore.currentUser?.role === SecurityRole.Admin)
 
-const columns: QTableColumn<SecurityUser>[] = [
+const columns: QTableColumn<SecurityUserResponse>[] = [
   { name: 'userName', label: 'Username', field: 'userName', sortable: true },
   { name: 'role', label: 'Role', field: 'role', sortable: true },
   { name: 'createdAt', label: 'Created', field: 'createdAt', sortable: true},
@@ -223,7 +266,7 @@ const levelDescription = computed(() => {
 })
 
 const createAccountMutation = useMutation({
-  mutationFn: (payload: CreateSecurityUser) => client.accounts(payload),
+  mutationFn: (payload: CreateSecurityUser) => client.accountsPOST(payload),
   onSuccess: async () => {
     Notify.create({ type: 'positive', message: 'Security account created successfully' })
     isCreateDialogOpen.value = false
@@ -276,6 +319,73 @@ function handleUpdateSecurityLevel() {
     requestedBy: fuseStore.currentUser?.id || undefined
   })
   updateSecurityLevelMutation.mutate(payload)
+}
+
+// Edit and Delete User Functions
+const updateUserMutation = useMutation({
+  mutationFn: (payload: UpdateUser) => client.accountsPATCH(payload.id || '', payload),
+  onSuccess: async () => {
+    Notify.create({ type: 'positive', message: 'User updated successfully' })
+    isEditDialogOpen.value = false
+    selectedUser.value = null
+    // Refresh the users list
+    queryClient.invalidateQueries({ queryKey: ['securityUsers']})
+  },
+  onError: (err) => {
+    const errorMsg = getErrorMessage(err, 'Unable to update user')
+    securityError.value = errorMsg
+    Notify.create({ type: 'negative', message: errorMsg })
+  }
+})
+
+const deleteUserMutation = useMutation({
+  mutationFn: (userId: string) => client.accountsDELETE(userId),
+  onSuccess: async () => {
+    Notify.create({ type: 'positive', message: 'User deleted successfully' })
+    // Refresh the users list
+    queryClient.invalidateQueries({ queryKey: ['securityUsers']})
+  },
+  onError: (err) => {
+    const errorMsg = getErrorMessage(err, 'Unable to delete user')
+    securityError.value = errorMsg
+    Notify.create({ type: 'negative', message: errorMsg })
+  }
+})
+
+function editItem(user: SecurityUserResponse) {
+  selectedUser.value = user
+  isEditDialogOpen.value = true
+}
+
+function deleteItem(user: SecurityUserResponse) {
+  Dialog.create({
+    title: 'Confirm Delete',
+    message: `Are you sure you want to delete user "${user.userName}"? This action cannot be undone.`,
+    cancel: true,
+    persistent: true
+  }).onOk(() => {
+    if (user.id) {
+      deleteUserMutation.mutate(user.id)
+    }
+  })
+}
+
+function handleEditUser(form: { id: string; role: SecurityRole | null }) {
+  securityError.value = null
+  const payload = Object.assign(new UpdateUser(), {
+    id: form.id || undefined,
+    role: form.role || undefined
+  })
+  updateUserMutation.mutate(payload)
+}
+
+function closeEditDialog() {
+  isEditDialogOpen.value = false
+  selectedUser.value = null
+}
+
+function isCurrentUser(user: SecurityUserResponse): boolean {
+  return user.id === fuseStore.currentUser?.id
 }
 </script>
 

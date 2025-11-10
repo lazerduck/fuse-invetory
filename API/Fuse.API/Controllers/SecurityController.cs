@@ -147,6 +147,17 @@ namespace Fuse.API.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> UpdateUser([FromRoute] Guid Id, [FromBody] UpdateUser command)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userId, out var userGuid))
+            {
+                return BadRequest(new { error = "Invalid user context." });
+            }
+
+            if (Id == userGuid)
+            {
+                return BadRequest(new { error = "You cannot edit your own account." });
+            }
+
             var merged = command with { Id = Id };
             var result = await _securityService.UpdateUser(merged, HttpContext.RequestAborted);
             if (!result.IsSuccess)
@@ -170,6 +181,17 @@ namespace Fuse.API.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteUser([FromRoute] Guid Id)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userId, out var userGuid))
+            {
+                return BadRequest(new { error = "Invalid user context." });
+            }
+
+            if (Id == userGuid)
+            {
+                return BadRequest(new { error = "You cannot delete your own account." });
+            }
+            
             var command = new DeleteUser(Id);
             var result = await _securityService.DeleteUser(command, HttpContext.RequestAborted);
             if (!result.IsSuccess)

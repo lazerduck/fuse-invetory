@@ -268,7 +268,12 @@ export interface IFuseApiClient {
      * @param body (optional) 
      * @return Created
      */
-    accounts(body: CreateSecurityUser | undefined, signal?: AbortSignal): Promise<SecurityUserInfo>;
+    accountsPOST(body: CreateSecurityUser | undefined, signal?: AbortSignal): Promise<SecurityUserInfo>;
+
+    /**
+     * @return OK
+     */
+    accountsAll(signal?: AbortSignal): Promise<SecurityUserResponse[]>;
 
     /**
      * @param body (optional) 
@@ -283,9 +288,15 @@ export interface IFuseApiClient {
     logout(body: LogoutSecurityUser | undefined, signal?: AbortSignal): Promise<void>;
 
     /**
+     * @param body (optional) 
      * @return OK
      */
-    users(signal?: AbortSignal): Promise<SecurityUser[]>;
+    accountsPATCH(id: string, body: UpdateUser | undefined, signal?: AbortSignal): Promise<SecurityUserResponse>;
+
+    /**
+     * @return No Content
+     */
+    accountsDELETE(id: string, signal?: AbortSignal): Promise<void>;
 
     /**
      * @return OK
@@ -2786,7 +2797,7 @@ export class FuseApiClient implements IFuseApiClient {
      * @param body (optional) 
      * @return Created
      */
-    accounts(body: CreateSecurityUser | undefined, signal?: AbortSignal): Promise<SecurityUserInfo> {
+    accountsPOST(body: CreateSecurityUser | undefined, signal?: AbortSignal): Promise<SecurityUserInfo> {
         let url_ = this.baseUrl + "/api/Security/accounts";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -2803,11 +2814,11 @@ export class FuseApiClient implements IFuseApiClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processAccounts(_response);
+            return this.processAccountsPOST(_response);
         });
     }
 
-    protected processAccounts(response: Response): Promise<SecurityUserInfo> {
+    protected processAccountsPOST(response: Response): Promise<SecurityUserInfo> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 201) {
@@ -2844,6 +2855,51 @@ export class FuseApiClient implements IFuseApiClient {
             });
         }
         return Promise.resolve<SecurityUserInfo>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    accountsAll(signal?: AbortSignal): Promise<SecurityUserResponse[]> {
+        let url_ = this.baseUrl + "/api/Security/accounts";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAccountsAll(_response);
+        });
+    }
+
+    protected processAccountsAll(response: Response): Promise<SecurityUserResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(SecurityUserResponse.fromJS(item));
+            }
+            else {
+                result200 = null as any;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SecurityUserResponse[]>(null as any);
     }
 
     /**
@@ -2950,48 +3006,114 @@ export class FuseApiClient implements IFuseApiClient {
     }
 
     /**
+     * @param body (optional) 
      * @return OK
      */
-    users(signal?: AbortSignal): Promise<SecurityUser[]> {
-        let url_ = this.baseUrl + "/api/Security/users";
+    accountsPATCH(id: string, body: UpdateUser | undefined, signal?: AbortSignal): Promise<SecurityUserResponse> {
+        let url_ = this.baseUrl + "/api/Security/accounts/{Id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{Id}", encodeURIComponent("" + id));
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = JSON.stringify(body);
+
         let options_: RequestInit = {
-            method: "GET",
+            body: content_,
+            method: "PATCH",
             signal,
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processUsers(_response);
+            return this.processAccountsPATCH(_response);
         });
     }
 
-    protected processUsers(response: Response): Promise<SecurityUser[]> {
+    protected processAccountsPATCH(response: Response): Promise<SecurityUserResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(SecurityUser.fromJS(item));
-            }
-            else {
-                result200 = null as any;
-            }
+            result200 = SecurityUserResponse.fromJS(resultData200);
             return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            let resultData404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result404 = ProblemDetails.fromJS(resultData404);
+            return throwException("Not Found", status, _responseText, _headers, result404);
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<SecurityUser[]>(null as any);
+        return Promise.resolve<SecurityUserResponse>(null as any);
+    }
+
+    /**
+     * @return No Content
+     */
+    accountsDELETE(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/Security/accounts/{Id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{Id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAccountsDELETE(_response);
+        });
+    }
+
+    protected processAccountsDELETE(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            let resultData404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result404 = ProblemDetails.fromJS(resultData404);
+            return throwException("Not Found", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
     }
 
     /**
@@ -5036,66 +5158,6 @@ export interface ISecurityStateResponse {
     currentUser?: SecurityUserInfo;
 }
 
-export class SecurityUser implements ISecurityUser {
-    id?: string;
-    userName?: string | undefined;
-    passwordHash?: string | undefined;
-    passwordSalt?: string | undefined;
-    role?: SecurityRole;
-    createdAt?: Date;
-    updatedAt?: Date;
-
-    constructor(data?: ISecurityUser) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["Id"];
-            this.userName = _data["UserName"];
-            this.passwordHash = _data["PasswordHash"];
-            this.passwordSalt = _data["PasswordSalt"];
-            this.role = _data["Role"];
-            this.createdAt = _data["CreatedAt"] ? new Date(_data["CreatedAt"].toString()) : undefined as any;
-            this.updatedAt = _data["UpdatedAt"] ? new Date(_data["UpdatedAt"].toString()) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): SecurityUser {
-        data = typeof data === 'object' ? data : {};
-        let result = new SecurityUser();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["Id"] = this.id;
-        data["UserName"] = this.userName;
-        data["PasswordHash"] = this.passwordHash;
-        data["PasswordSalt"] = this.passwordSalt;
-        data["Role"] = this.role;
-        data["CreatedAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
-        data["UpdatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
-        return data;
-    }
-}
-
-export interface ISecurityUser {
-    id?: string;
-    userName?: string | undefined;
-    passwordHash?: string | undefined;
-    passwordSalt?: string | undefined;
-    role?: SecurityRole;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
 export class SecurityUserInfo implements ISecurityUserInfo {
     id?: string;
     userName?: string | undefined;
@@ -5141,6 +5203,58 @@ export class SecurityUserInfo implements ISecurityUserInfo {
 }
 
 export interface ISecurityUserInfo {
+    id?: string;
+    userName?: string | undefined;
+    role?: SecurityRole;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export class SecurityUserResponse implements ISecurityUserResponse {
+    id?: string;
+    userName?: string | undefined;
+    role?: SecurityRole;
+    createdAt?: Date;
+    updatedAt?: Date;
+
+    constructor(data?: ISecurityUserResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["Id"];
+            this.userName = _data["UserName"];
+            this.role = _data["Role"];
+            this.createdAt = _data["CreatedAt"] ? new Date(_data["CreatedAt"].toString()) : undefined as any;
+            this.updatedAt = _data["UpdatedAt"] ? new Date(_data["UpdatedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): SecurityUserResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SecurityUserResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Id"] = this.id;
+        data["UserName"] = this.userName;
+        data["Role"] = this.role;
+        data["CreatedAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        data["UpdatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface ISecurityUserResponse {
     id?: string;
     userName?: string | undefined;
     role?: SecurityRole;
@@ -5971,6 +6085,46 @@ export interface IUpdateTag {
     name?: string | undefined;
     description?: string | undefined;
     color?: TagColor;
+}
+
+export class UpdateUser implements IUpdateUser {
+    id?: string;
+    role?: SecurityRole;
+
+    constructor(data?: IUpdateUser) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["Id"];
+            this.role = _data["Role"];
+        }
+    }
+
+    static fromJS(data: any): UpdateUser {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateUser();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Id"] = this.id;
+        data["Role"] = this.role;
+        return data;
+    }
+}
+
+export interface IUpdateUser {
+    id?: string;
+    role?: SecurityRole;
 }
 
 export interface FileParameter {
