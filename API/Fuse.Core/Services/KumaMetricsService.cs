@@ -123,22 +123,26 @@ public class KumaMetricsService : BackgroundService, IKumaHealthService
         // Parse Prometheus-format metrics
         // Example line: monitor_status{monitor_id="1",monitor_name="fuse",monitor_type="http",monitor_url="http://fuse.ubuntu.lan",monitor_hostname="null",monitor_port="null"} 1
         
-        var regex = new Regex(
-            @"monitor_status\{[^}]*monitor_url=""([^""]+)""[^}]*monitor_name=""([^""]+)""[^}]*\}\s+(\d+)",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase
-        );
-
-        var matches = regex.Matches(metricsContent);
+        // Use a more flexible regex that captures all key-value pairs, then extract what we need
+        var lineRegex = new Regex(@"monitor_status\{([^}]+)\}\s+(\d+)", RegexOptions.Multiline);
         var now = DateTime.UtcNow;
 
-        foreach (Match match in matches)
+        foreach (Match lineMatch in lineRegex.Matches(metricsContent))
         {
-            if (match.Groups.Count >= 4)
+            if (lineMatch.Groups.Count >= 3)
             {
-                var monitorUrl = match.Groups[1].Value;
-                var monitorName = match.Groups[2].Value;
-                var statusValue = int.Parse(match.Groups[3].Value);
+                var labels = lineMatch.Groups[1].Value;
+                var statusValue = int.Parse(lineMatch.Groups[2].Value);
 
+                // Extract monitor_url and monitor_name from labels
+                var urlMatch = Regex.Match(labels, @"monitor_url=""([^""]+)""");
+                var nameMatch = Regex.Match(labels, @"monitor_name=""([^""]+)""");
+
+                if (!urlMatch.Success || !nameMatch.Success)
+                    continue;
+
+                var monitorUrl = urlMatch.Groups[1].Value;
+                var monitorName = nameMatch.Groups[1].Value;
                 var normalizedUrl = NormalizeUrl(monitorUrl);
                 
                 var status = statusValue switch
