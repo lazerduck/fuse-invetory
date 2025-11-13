@@ -65,7 +65,7 @@ import { computed, ref } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { Notify, Dialog } from 'quasar'
 import type { QTableColumn } from 'quasar'
-import { KumaIntegration, CreateKumaIntegration, UpdateKumaIntegration } from '../api/client'
+import { KumaIntegrationResponse, CreateKumaIntegration, UpdateKumaIntegration } from '../api/client'
 import { useFuseClient } from '../composables/useFuseClient'
 import { useFuseStore } from '../stores/FuseStore'
 import { useEnvironments } from '../composables/useEnvironments'
@@ -102,7 +102,7 @@ const environmentLookup = environmentsStore.lookup
 const platformLookup = platformsStore.lookup
 const accountLookup = accountsStore.lookup
 
-const columns: QTableColumn<KumaIntegration>[] = [
+const columns: QTableColumn<KumaIntegrationResponse>[] = [
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   { name: 'uri', label: 'URI', field: 'uri', align: 'left' },
   { name: 'environments', label: 'Environments', field: 'environmentIds', align: 'left' },
@@ -112,14 +112,14 @@ const columns: QTableColumn<KumaIntegration>[] = [
 ]
 
 const isFormDialogOpen = ref(false)
-const selectedIntegration = ref<KumaIntegration | null>(null)
+const selectedIntegration = ref<KumaIntegrationResponse | null>(null)
 
 function openCreateDialog() {
   selectedIntegration.value = null
   isFormDialogOpen.value = true
 }
 
-function openEditDialog(integration: KumaIntegration) {
+function openEditDialog(integration: KumaIntegrationResponse) {
   if (!integration.id) return
   selectedIntegration.value = integration
   isFormDialogOpen.value = true
@@ -193,7 +193,7 @@ function handleFormSubmit(values: KumaIntegrationFormModel) {
   }
 }
 
-function confirmDelete(integration: KumaIntegration) {
+function confirmDelete(integration: KumaIntegrationResponse) {
   if (!integration.id) return
   Dialog.create({
     title: 'Delete integration',
