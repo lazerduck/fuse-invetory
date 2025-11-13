@@ -4,7 +4,7 @@ using Fuse.Core.Interfaces;
 using Fuse.Core.Models;
 using Fuse.Core.Services;
 using Fuse.Tests.TestInfrastructure;
-using FluentAssertions;
+using System.Linq;
 using Xunit;
 
 namespace Fuse.Tests.Services;
@@ -48,8 +48,8 @@ public class DataStoreServiceTests
         var store = NewStore();
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.CreateDataStoreAsync(new CreateDataStore("D1", "sql", Guid.NewGuid(), null, new Uri("http://x"), new HashSet<Guid>()));
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorType.Should().Be(ErrorType.Validation);
+    Assert.False(result.IsSuccess);
+    Assert.Equal(ErrorType.Validation, result.ErrorType);
     }
 
     [Fact]
@@ -59,8 +59,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.CreateDataStoreAsync(new CreateDataStore("D1", "sql", env.Id, Guid.NewGuid(), new Uri("http://x"), new HashSet<Guid>()));
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorType.Should().Be(ErrorType.Validation);
+    Assert.False(result.IsSuccess);
+    Assert.Equal(ErrorType.Validation, result.ErrorType);
     }
 
     [Fact]
@@ -70,8 +70,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.CreateDataStoreAsync(new CreateDataStore("D1", "sql", env.Id, null, new Uri("http://x"), new HashSet<Guid> { Guid.NewGuid() }));
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorType.Should().Be(ErrorType.Validation);
+    Assert.False(result.IsSuccess);
+    Assert.Equal(ErrorType.Validation, result.ErrorType);
     }
 
 
@@ -84,8 +84,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env }, ds: new[] { ds });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.CreateDataStoreAsync(new CreateDataStore("d1", "sql", env.Id, null, new Uri("http://x"), new HashSet<Guid>()));
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorType.Should().Be(ErrorType.Conflict);
+    Assert.False(result.IsSuccess);
+    Assert.Equal(ErrorType.Conflict, result.ErrorType);
     }
 
     [Fact]
@@ -95,8 +95,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.CreateDataStoreAsync(new CreateDataStore("D1", "sql", env.Id, null, new Uri("http://x"), new HashSet<Guid>()));
-        result.IsSuccess.Should().BeTrue();
-        (await service.GetDataStoresAsync()).Should().ContainSingle(d => d.Name == "D1");
+    Assert.True(result.IsSuccess);
+    Assert.Single(await service.GetDataStoresAsync(), d => d.Name == "D1");
     }
 
     [Fact]
@@ -106,8 +106,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.CreateDataStoreAsync(new CreateDataStore("D1", "sql", env.Id, null, null, new HashSet<Guid>()));
-        result.IsSuccess.Should().BeTrue();
-        result.Value!.ConnectionUri.Should().BeNull();
+    Assert.True(result.IsSuccess);
+    Assert.Null(result.Value!.ConnectionUri);
     }
 
     [Fact]
@@ -117,8 +117,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.UpdateDataStoreAsync(new UpdateDataStore(Guid.NewGuid(), "D1", "sql", env.Id, null, new Uri("http://x"), new HashSet<Guid>()));
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorType.Should().Be(ErrorType.NotFound);
+    Assert.False(result.IsSuccess);
+    Assert.Equal(ErrorType.NotFound, result.ErrorType);
     }
 
     [Fact]
@@ -130,8 +130,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env }, ds: new[] { d1, d2 });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.UpdateDataStoreAsync(new UpdateDataStore(d2.Id, "a", "sql", env.Id, null, new Uri("http://x"), new HashSet<Guid>()));
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorType.Should().Be(ErrorType.Conflict);
+    Assert.False(result.IsSuccess);
+    Assert.Equal(ErrorType.Conflict, result.ErrorType);
     }
 
 
@@ -144,11 +144,11 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env }, ds: new[] { ds });
         var service = new DataStoreService(store, new TagLookupService(store));
         var res = await service.UpdateDataStoreAsync(new UpdateDataStore(ds.Id, "New", "nosql", env.Id, null, new Uri("http://new"), new HashSet<Guid>()));
-        res.IsSuccess.Should().BeTrue();
-        var got = await service.GetDataStoreByIdAsync(ds.Id);
-        got!.Name.Should().Be("New");
-        got.Kind.Should().Be("nosql");
-        got.ConnectionUri.Should().Be(new Uri("http://new"));
+    Assert.True(res.IsSuccess);
+    var got = await service.GetDataStoreByIdAsync(ds.Id);
+    Assert.Equal("New", got!.Name);
+    Assert.Equal("nosql", got.Kind);
+    Assert.Equal(new Uri("http://new"), got.ConnectionUri);
     }
 
     [Fact]
@@ -159,8 +159,8 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env }, ds: new[] { ds });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.UpdateDataStoreAsync(new UpdateDataStore(ds.Id, "HasUri", "sql", env.Id, null, null, new HashSet<Guid>()));
-        result.IsSuccess.Should().BeTrue();
-        result.Value!.ConnectionUri.Should().BeNull();
+    Assert.True(result.IsSuccess);
+    Assert.Null(result.Value!.ConnectionUri);
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class DataStoreServiceTests
         var store = NewStore(envs: new[] { env }, ds: new[] { ds });
         var service = new DataStoreService(store, new TagLookupService(store));
         var result = await service.DeleteDataStoreAsync(new DeleteDataStore(ds.Id));
-        result.IsSuccess.Should().BeTrue();
-        (await service.GetDataStoresAsync()).Should().BeEmpty();
+    Assert.True(result.IsSuccess);
+    Assert.Empty(await service.GetDataStoresAsync());
     }
 }
