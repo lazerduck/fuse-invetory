@@ -812,4 +812,58 @@ public class SecurityServiceTests
     }
 
     #endregion
+
+    #region UpdateUser_DeleteUser Tests
+
+    [Fact]
+    public async Task UpdateUser_ValidationAndNotFound()
+    {
+        var admin = new SecurityUser(Guid.NewGuid(), "admin", "hash", "salt", SecurityRole.Admin, DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(users: new[] { admin });
+        var service = new SecurityService(store);
+
+        var bad = await service.UpdateUser(null!, default);
+        bad.IsSuccess.Should().BeFalse();
+        bad.ErrorType.Should().Be(ErrorType.Validation);
+
+        var nf = await service.UpdateUser(new UpdateUser(Guid.NewGuid(), SecurityRole.Reader), default);
+        nf.IsSuccess.Should().BeFalse();
+        nf.ErrorType.Should().Be(ErrorType.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateUser_Success_ChangesRole()
+    {
+        var user = new SecurityUser(Guid.NewGuid(), "user", "hash", "salt", SecurityRole.Reader, DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(users: new[] { user });
+        var service = new SecurityService(store);
+
+        var res = await service.UpdateUser(new UpdateUser(user.Id, SecurityRole.Admin), default);
+        res.IsSuccess.Should().BeTrue();
+        res.Value!.Role.Should().Be(SecurityRole.Admin);
+    }
+
+    [Fact]
+    public async Task DeleteUser_Validation_NotFound_AndSuccess()
+    {
+        var user = new SecurityUser(Guid.NewGuid(), "user", "hash", "salt", SecurityRole.Reader, DateTime.UtcNow, DateTime.UtcNow);
+        var store = NewStore(users: new[] { user });
+        var service = new SecurityService(store);
+
+        var bad = await service.DeleteUser(null!, default);
+        bad.IsSuccess.Should().BeFalse();
+        bad.ErrorType.Should().Be(ErrorType.Validation);
+
+        var nf = await service.DeleteUser(new DeleteUser(Guid.NewGuid()), default);
+        nf.IsSuccess.Should().BeFalse();
+        nf.ErrorType.Should().Be(ErrorType.NotFound);
+
+        var ok = await service.DeleteUser(new DeleteUser(user.Id), default);
+        ok.IsSuccess.Should().BeTrue();
+
+        var state = await service.GetSecurityStateAsync();
+        state.Users.Should().BeEmpty();
+    }
+
+    #endregion
 }
