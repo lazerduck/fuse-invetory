@@ -95,10 +95,11 @@ public class KumaMetricsService : BackgroundService, IKumaHealthService
             var metricsUrl = new Uri(baseUri, "/metrics");
             var request = new HttpRequestMessage(HttpMethod.Get, metricsUrl);
             
-            // Add authorization header if needed
+            // Add HTTP Basic Auth if API key is provided
             if (!string.IsNullOrWhiteSpace(apiKey))
             {
-                request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                var authValue = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($":{apiKey}"));
+                request.Headers.Add("Authorization", $"Basic {authValue}");
             }
 
             using var response = await client.SendAsync(request, ct);

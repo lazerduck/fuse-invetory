@@ -1,9 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
-import { useFuseClient } from './useFuseClient'
 import type { HealthStatusResponse } from '../types/health'
 
 export function useHealthCheck(appId: string, instanceId: string, enabled: boolean = true) {
-  const client = useFuseClient()
   
   return useQuery({
     queryKey: ['health', appId, instanceId],

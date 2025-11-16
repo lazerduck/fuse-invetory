@@ -6,8 +6,8 @@ export interface HealthStatusResponse {
 }
 
 export enum MonitorStatus {
-  Up = 1,
-  Down = 0,
-  Pending = 2,
-  Maintenance = 3
+  Up = 'Up',
+  Down = 'Down',
+  Pending = 'Pending',
+  Maintenance = 'Maintenance'
 }
