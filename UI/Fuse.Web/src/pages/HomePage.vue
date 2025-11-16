@@ -58,22 +58,13 @@
 
     <section class="explore-section">
       <div class="section-header">
-        <h2>Applications</h2>
+        <h2>Inventory</h2>
         <div class="filters">
-          <q-input
-            v-model="search"
-            dense
-            outlined
-            debounce="100"
-            clearable
-            placeholder="Search by name, owner, tag, or framework"
-            class="filter-input"
-            prepend-inner-icon="search"
-          />
           <q-select
-            v-model="selectedEnvironment"
+            v-model="selectedEnvironments"
             dense
             outlined
+            multiple
             emit-value
             map-options
             clearable
@@ -84,6 +75,9 @@
           >
             <template #option="scope">
               <q-item v-bind="scope.itemProps">
+                <q-item-section side>
+                  <q-checkbox :model-value="scope.selected" @update:model-value="scope.toggleOption" />
+                </q-item-section>
                 <q-item-section>
                   <q-item-label>{{ scope.opt.label }}</q-item-label>
                   <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
@@ -91,29 +85,67 @@
               </q-item>
             </template>
           </q-select>
+          <q-select
+            v-model="selectedItemTypes"
+            dense
+            outlined
+            multiple
+            emit-value
+            map-options
+            clearable
+            :options="itemTypeOptions"
+            class="filter-select"
+            placeholder="Filter by item type"
+            popup-content-class="filter-popup"
+          >
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section side>
+                  <q-checkbox :model-value="scope.selected" @update:model-value="scope.toggleOption" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.label }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
       </div>
 
-      <div class="applications-list" v-if="!applicationsLoading">
-        <ApplicationCard
-          v-for="application in filteredApplications"
-          :key="application.id"
-          :application="application"
-          :environment-lookup="environmentLookup"
-          :platformLookup="platformLookup"
-          :tag-lookup="tagLookup"
-          :format-dependency-label="formatDependencyLabel"
-        />
+      <div class="inventory-grid" v-if="!isLoading">
+        <template v-for="item in filteredInventoryItems" :key="item.key">
+          <InventoryInstanceCard
+            v-if="item.type === 'instance'"
+            :instance="item.data.instance"
+            :application-id="item.data.applicationId"
+            :application-name="item.data.applicationName"
+            :environment-name="item.data.environmentName"
+            :platform-name="item.data.platformName"
+            :dependency-formatter="formatDependencyLabel"
+          />
+          <InventoryDataStoreCard
+            v-else-if="item.type === 'datastore'"
+            :data-store="item.data.dataStore"
+            :environment-name="item.data.environmentName"
+            :platform-name="item.data.platformName"
+            :tag-lookup="tagLookup"
+          />
+          <InventoryExternalResourceCard
+            v-else-if="item.type === 'external'"
+            :external-resource="item.data.externalResource"
+            :tag-lookup="tagLookup"
+          />
+        </template>
 
-        <div v-if="!filteredApplications.length" class="empty-results">
+        <div v-if="!filteredInventoryItems.length" class="empty-results">
           <q-icon name="search_off" size="32px" class="text-grey-5" />
-          <p>No applications match your filters. Try adjusting the search or environment.</p>
+          <p>No items match your filters. Try adjusting the environment or item type.</p>
         </div>
       </div>
 
       <div v-else class="loading-state">
         <q-spinner color="primary" size="36px" />
-        <p>Loading applications…</p>
+        <p>Loading inventory…</p>
       </div>
     </section>
   </div>
@@ -130,13 +162,15 @@ import { useExternalResources } from '../composables/useExternalResources'
 import { useDataStores } from '../composables/useDataStores'
 import { useTags } from '../composables/useTags'
 import StatCard from '../components/home/StatCard.vue'
-import ApplicationCard from '../components/home/ApplicationCard.vue'
+import InventoryInstanceCard from '../components/home/InventoryInstanceCard.vue'
+import InventoryDataStoreCard from '../components/home/InventoryDataStoreCard.vue'
+import InventoryExternalResourceCard from '../components/home/InventoryExternalResourceCard.vue'
 import { useOnboardingStore } from '../stores/OnboardingStore'
 import { useOnboardingTour } from '../composables/useOnboardingTour'
 import { getErrorMessage } from '../utils/error'
 
-const search = ref('')
-const selectedEnvironment = ref<string | null>(null)
+const selectedEnvironments = ref<string[]>([])
+const selectedItemTypes = ref<string[]>(['instance', 'datastore', 'external'])
 
 const onboardingStore = useOnboardingStore()
 const { startTour } = useOnboardingTour()
@@ -152,7 +186,12 @@ const externalResourcesQuery = useExternalResources()
 const dataStoresQuery = useDataStores()
 const tagsQuery = useTags()
 
-const applicationsLoading = computed(() => applicationsQuery.isLoading.value || applicationsQuery.isFetching.value)
+const isLoading = computed(() => 
+  applicationsQuery.isLoading.value || 
+  applicationsQuery.isFetching.value ||
+  dataStoresQuery.isLoading.value ||
+  externalResourcesQuery.isLoading.value
+)
 
 const applicationCount = computed(() => applicationsQuery.data.value?.length ?? 0)
 const platformCount = computed(() => platformsQuery.data.value?.length ?? 0)
@@ -209,33 +248,87 @@ const environmentOptions = computed(() => {
   }))
 })
 
-const filteredApplications = computed(() => {
-  const term = search.value.trim().toLowerCase()
-  const environmentFilter = selectedEnvironment.value
+const itemTypeOptions = [
+  { label: 'Instances', value: 'instance' },
+  { label: 'Data Stores', value: 'datastore' },
+  { label: 'External Resources', value: 'external' }
+]
 
-  return (applicationsQuery.data.value ?? []).filter((application) => {
-    const matchesEnvironment = environmentFilter
-      ? (application.instances ?? []).some((instance) => instance.environmentId === environmentFilter)
-      : true
+// Build unified inventory list
+const filteredInventoryItems = computed(() => {
+  const items: Array<{
+    key: string
+    type: 'instance' | 'datastore' | 'external'
+    environmentId?: string
+    data: any
+  }> = []
 
-    if (!matchesEnvironment) {
-      return false
+  const environments = selectedEnvironments.value
+  const types = selectedItemTypes.value.length > 0 ? selectedItemTypes.value : ['instance', 'datastore', 'external']
+
+  // Add instances
+  if (types.includes('instance')) {
+    const applications = applicationsQuery.data.value ?? []
+    for (const app of applications) {
+      for (const instance of app.instances ?? []) {
+        // Filter by environment
+        if (environments.length > 0 && !environments.includes(instance.environmentId ?? '')) {
+          continue
+        }
+
+        items.push({
+          key: `instance-${app.id}-${instance.id}`,
+          type: 'instance',
+          environmentId: instance.environmentId,
+          data: {
+            instance,
+            applicationId: app.id ?? '',
+            applicationName: app.name ?? 'Unknown',
+            environmentName: environmentLookup.value[instance.environmentId ?? ''] ?? 'Unknown',
+            platformName: platformLookup.value[instance.platformId ?? ''] ?? 'Unknown'
+          }
+        })
+      }
     }
+  }
 
-    if (!term) {
-      return true
+  // Add data stores
+  if (types.includes('datastore')) {
+    const dataStores = dataStoresQuery.data.value ?? []
+    for (const store of dataStores) {
+      // Filter by environment
+      if (environments.length > 0 && !environments.includes(store.environmentId ?? '')) {
+        continue
+      }
+
+      items.push({
+        key: `datastore-${store.id}`,
+        type: 'datastore',
+        environmentId: store.environmentId,
+        data: {
+          dataStore: store,
+          environmentName: environmentLookup.value[store.environmentId ?? ''] ?? 'Unknown',
+          platformName: platformLookup.value[store.platformId ?? ''] ?? 'Unknown'
+        }
+      })
     }
+  }
 
-    const haystack = [
-      application.name ?? '',
-      application.owner ?? '',
-      application.framework ?? '',
-      application.tagIds?.map((tagId) => tagLookup.value[tagId] ?? tagId).join(' ') ?? '',
-      application.repositoryUri ?? ''
-    ]
+  // Add external resources
+  if (types.includes('external')) {
+    const resources = externalResourcesQuery.data.value ?? []
+    for (const resource of resources) {
+      items.push({
+        key: `external-${resource.id}`,
+        type: 'external',
+        data: {
+          externalResource: resource
+        }
+      })
+    }
+  }
 
-    return haystack.some((value) => value.toLowerCase().includes(term))
-  })
+  return items
 })
 
 function formatDependencyLabel(dependency: { targetKind?: TargetKind | null; targetId?: string | null }) {
@@ -344,15 +437,14 @@ function skipOnboarding() {
   flex-wrap: wrap;
 }
 
-.filter-input,
 .filter-select {
-  min-width: 220px;
+  min-width: 240px;
 }
 
-.applications-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
 }
 
 .empty-results {
@@ -379,12 +471,17 @@ function skipOnboarding() {
   transition: color 0.25s ease;
 }
 
+@media (max-width: 768px) {
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .filters {
     width: 100%;
   }
 
-  .filter-input,
   .filter-select {
     flex: 1 1 100%;
     min-width: unset;
