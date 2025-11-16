@@ -188,29 +188,71 @@ public class EnvironmentService : IEnvironmentService
                 foreach (var env in environmentsToProcess)
                 {
                     // Check if an instance already exists for this environment
-                    if (instances.Any(i => i.EnvironmentId == env.Id))
+                    var existingInstance = instances.FirstOrDefault(i => i.EnvironmentId == env.Id);
+                    
+                    if (existingInstance != null)
                     {
-                        continue;
+                        // Update existing instance if any URIs are empty
+                        var needsUpdate = false;
+                        var updatedBaseUri = existingInstance.BaseUri;
+                        var updatedHealthUri = existingInstance.HealthUri;
+                        var updatedOpenApiUri = existingInstance.OpenApiUri;
+
+                        if (existingInstance.BaseUri == null && !string.IsNullOrWhiteSpace(env.BaseUriTemplate))
+                        {
+                            updatedBaseUri = ApplyTemplate(env.BaseUriTemplate, app.Name, env.Name);
+                            needsUpdate = true;
+                        }
+
+                        if (existingInstance.HealthUri == null && !string.IsNullOrWhiteSpace(env.HealthUriTemplate))
+                        {
+                            updatedHealthUri = ApplyTemplate(env.HealthUriTemplate, app.Name, env.Name);
+                            needsUpdate = true;
+                        }
+
+                        if (existingInstance.OpenApiUri == null && !string.IsNullOrWhiteSpace(env.OpenApiUriTemplate))
+                        {
+                            updatedOpenApiUri = ApplyTemplate(env.OpenApiUriTemplate, app.Name, env.Name);
+                            needsUpdate = true;
+                        }
+
+                        if (needsUpdate)
+                        {
+                            var updatedInstance = existingInstance with
+                            {
+                                BaseUri = updatedBaseUri,
+                                HealthUri = updatedHealthUri,
+                                OpenApiUri = updatedOpenApiUri,
+                                UpdatedAt = now
+                            };
+
+                            var index = instances.FindIndex(i => i.Id == existingInstance.Id);
+                            instances[index] = updatedInstance;
+                            instancesCreated++;
+                            modified = true;
+                        }
                     }
+                    else
+                    {
+                        // Create new instance with template-based URIs
+                        var newInstance = new ApplicationInstance(
+                            Id: Guid.NewGuid(),
+                            EnvironmentId: env.Id,
+                            PlatformId: null,
+                            BaseUri: ApplyTemplate(env.BaseUriTemplate, app.Name, env.Name),
+                            HealthUri: ApplyTemplate(env.HealthUriTemplate, app.Name, env.Name),
+                            OpenApiUri: ApplyTemplate(env.OpenApiUriTemplate, app.Name, env.Name),
+                            Version: null,
+                            Dependencies: Array.Empty<ApplicationInstanceDependency>(),
+                            TagIds: new HashSet<Guid>(),
+                            CreatedAt: now,
+                            UpdatedAt: now
+                        );
 
-                    // Create new instance with template-based URIs
-                    var newInstance = new ApplicationInstance(
-                        Id: Guid.NewGuid(),
-                        EnvironmentId: env.Id,
-                        PlatformId: null,
-                        BaseUri: ApplyTemplate(env.BaseUriTemplate, app.Name, env.Name),
-                        HealthUri: ApplyTemplate(env.HealthUriTemplate, app.Name, env.Name),
-                        OpenApiUri: ApplyTemplate(env.OpenApiUriTemplate, app.Name, env.Name),
-                        Version: null,
-                        Dependencies: Array.Empty<ApplicationInstanceDependency>(),
-                        TagIds: new HashSet<Guid>(),
-                        CreatedAt: now,
-                        UpdatedAt: now
-                    );
-
-                    instances.Add(newInstance);
-                    instancesCreated++;
-                    modified = true;
+                        instances.Add(newInstance);
+                        instancesCreated++;
+                        modified = true;
+                    }
                 }
 
                 if (modified)
