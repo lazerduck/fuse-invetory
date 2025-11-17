@@ -20,6 +20,17 @@
         :disable="environmentStore.isLoading.value"
         hint="Select one or more environments to display"
       />
+      <div v-if="selectedNodeId" class="node-filter-info">
+        <q-chip
+          removable
+          @remove="selectedNodeId = null; applyNodeFocusFilter()"
+          color="primary"
+          text-color="white"
+          icon="filter_alt"
+        >
+          Focused view active - Click node again to deselect
+        </q-chip>
+      </div>
     </div>
     <q-card class="content-card graph-card">
       <div ref="graphEl" class="graph"></div>
@@ -58,6 +69,9 @@ const isLoading = computed(() =>
 // Selected environment IDs for filtering (multi-select)
 const selectedEnvIds = ref<string[]>([])
 
+// Selected node for focused view filtering
+const selectedNodeId = ref<string | null>(null)
+
 watch(isLoading, (newVal) => {
   if (!newVal) {
     refreshGraph();
@@ -65,7 +79,11 @@ watch(isLoading, (newVal) => {
 });
 
 // Refresh on environment selection changes
-watch(selectedEnvIds, () => refreshGraph())
+watch(selectedEnvIds, () => {
+  // Clear node selection when changing environments
+  selectedNodeId.value = null
+  refreshGraph()
+})
 
 function refreshGraph() {
   if (!cy) return
@@ -162,6 +180,10 @@ function refreshGraph() {
 
   cy.elements().remove()
   cy.add([...nodes, ...edges])
+  
+  // Apply node focus filtering if a node is selected
+  applyNodeFocusFilter()
+  
   cy.layout({
       name: 'fcose',
       // animate option removed – plugin typings may not expose it here
@@ -172,6 +194,47 @@ function refreshGraph() {
       nodeSeparation: 75,
       nodeDimensionsIncludeLabels: true
   } as any).run()
+}
+
+function applyNodeFocusFilter() {
+  if (!cy) return
+  
+  if (selectedNodeId.value) {
+    // Get the selected node and its neighborhood
+    const selectedNode = cy.getElementById(selectedNodeId.value)
+    if (selectedNode.length === 0) {
+      // Node doesn't exist anymore, clear selection
+      selectedNodeId.value = null
+      return
+    }
+    
+    // Get connected nodes (neighbors) and edges
+    const neighborhood = selectedNode.neighborhood()
+    const connectedNodes = neighborhood.nodes()
+    const connectedEdges = neighborhood.edges()
+    
+    // Hide all elements first
+    cy.elements().addClass('dimmed')
+    
+    // Show and highlight the selected node and its connections
+    selectedNode.removeClass('dimmed').addClass('selected')
+    connectedNodes.removeClass('dimmed').addClass('neighbor')
+    connectedEdges.removeClass('dimmed')
+  } else {
+    // No node selected, show all elements normally
+    cy.elements().removeClass('dimmed selected neighbor')
+  }
+}
+
+function handleNodeClick(nodeId: string) {
+  if (selectedNodeId.value === nodeId) {
+    // Clicking the same node again deselects it
+    selectedNodeId.value = null
+  } else {
+    // Select the new node
+    selectedNodeId.value = nodeId
+  }
+  applyNodeFocusFilter()
 }
 
 onMounted(() => {
@@ -194,7 +257,7 @@ onMounted(() => {
       quality: 'default'
     } as any,
     style: [
-      { selector: 'node', style: { 'label': 'data(label)' }},
+      { selector: 'node', style: { 'label': 'data(label)' } as any },
       { selector: '[type="environment"]', style: { 'background-color': '#444' }},
       { selector: '[type="appInstance"]', style: { 'background-color': '#0080ff' }},
       { selector: '[type="datastore"]', style: { 'background-color': '#8b5cf6' }},
@@ -207,8 +270,34 @@ onMounted(() => {
         'target-arrow-shape': 'triangle', 
         'target-arrow-color': '#ccc',
         'curve-style': 'bezier'
-      }}
+      }},
+      // Selected node styling
+      { selector: '.selected', style: {
+        'border-width': 4,
+        'border-color': '#ff0',
+        'border-style': 'solid',
+        'z-index': 999
+      } as any },
+      // Neighbor nodes styling
+      { selector: '.neighbor', style: {
+        'border-width': 2,
+        'border-color': '#ff0',
+        'border-style': 'solid'
+      } as any },
+      // Dimmed (hidden) elements
+      { selector: '.dimmed', style: {
+        'opacity': 0.1,
+        'z-index': 0
+      } as any }
     ]
+  })
+
+  // Add click handler for node selection
+  cy.on('tap', 'node', (event) => {
+    const node = event.target
+    // Don't allow selecting environment parent nodes
+    if (node.data('type') === 'environment') return
+    handleNodeClick(node.id())
   })
 
   // Try initial render if data already present
@@ -238,5 +327,17 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+}
+
+.graph-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.node-filter-info {
+  display: flex;
+  align-items: center;
 }
 </style>
