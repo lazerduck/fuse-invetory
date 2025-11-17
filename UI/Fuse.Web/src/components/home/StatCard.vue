@@ -1,5 +1,5 @@
 <template>
-  <q-card class="stat-card" :to="to" clickable>
+  <q-card class="stat-card" clickable role="link" tabindex="0" @click="navigate" @keyup.enter="navigate" @keyup.space.prevent="navigate">
     <div class="stat-icon" :class="iconClass">
       <q-icon :name="icon" size="24px" />
     </div>
@@ -12,13 +12,23 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { useRouter } from 'vue-router'
+
+const props = defineProps<{
   value: number
   label: string
   icon: string
   iconClass: string
-  to: string
+  to?: string
 }>()
+
+const router = useRouter()
+
+function navigate() {
+  if (props.to) {
+    router.push(props.to)
+  }
+}
 </script>
 
 <style scoped>
