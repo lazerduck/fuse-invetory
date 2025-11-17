@@ -20,6 +20,17 @@
         :disable="environmentStore.isLoading.value"
         hint="Select one or more environments to display"
       />
+      <div v-if="selectedNodeId" class="node-filter-info">
+        <q-chip
+          removable
+          @remove="selectedNodeId = null; applyNodeFocusFilter()"
+          color="primary"
+          text-color="white"
+          icon="filter_alt"
+        >
+          Focused view active - Click node again to deselect
+        </q-chip>
+      </div>
     </div>
     <q-card class="content-card graph-card">
       <div ref="graphEl" class="graph"></div>
@@ -32,6 +43,8 @@ import cytoscape, { type Core, type ElementDefinition } from 'cytoscape';
 import fcose from 'cytoscape-fcose'
 // fcose layout plugin improves compound graph spacing
 import { computed, onMounted, ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router';
 import { useApplications } from '../composables/useApplications';
 import { useEnvironments } from '../composables/useEnvironments';
 import { usePlatforms } from '../composables/usePlatforms';
@@ -39,7 +52,10 @@ import { useDataStores } from '../composables/useDataStores';
 import { useExternalResources } from '../composables/useExternalResources';
 
 const graphEl = ref<HTMLDivElement | null>(null)
+
 let cy: Core | null = null
+const $q = useQuasar();
+const router = useRouter();
 
 const applicationStore = useApplications();
 const environmentStore = useEnvironments();
@@ -58,6 +74,9 @@ const isLoading = computed(() =>
 // Selected environment IDs for filtering (multi-select)
 const selectedEnvIds = ref<string[]>([])
 
+// Selected node for focused view filtering
+const selectedNodeId = ref<string | null>(null)
+
 watch(isLoading, (newVal) => {
   if (!newVal) {
     refreshGraph();
@@ -65,7 +84,11 @@ watch(isLoading, (newVal) => {
 });
 
 // Refresh on environment selection changes
-watch(selectedEnvIds, () => refreshGraph())
+watch(selectedEnvIds, () => {
+  // Clear node selection when changing environments
+  selectedNodeId.value = null
+  refreshGraph()
+})
 
 function refreshGraph() {
   if (!cy) return
@@ -162,30 +185,112 @@ function refreshGraph() {
 
   cy.elements().remove()
   cy.add([...nodes, ...edges])
+
+  // Update node text color based on theme
+  const textColor = $q.dark.isActive ? '#fff' : '#222';
+  cy.style()
+    .selector('node')
+    .style({ 'label': 'data(label)', 'color': textColor })
+    .update();
+
+  // Apply node focus filtering if a node is selected
+  applyNodeFocusFilter()
+
   cy.layout({
-      name: 'fcose',
-      // animate option removed – plugin typings may not expose it here
-      fit: true,
-      padding: 30,
-      quality: 'default',
-      packComponents: true,
-      nodeSeparation: 75,
-      nodeDimensionsIncludeLabels: true
+    name: 'fcose',
+    fit: true,
+    padding: 30,
+    quality: 'default',
+    packComponents: true,
+    nodeSeparation: 75,
+    nodeDimensionsIncludeLabels: true
   } as any).run()
+}
+
+function applyNodeFocusFilter() {
+  if (!cy) return
+
+  // Always clear previous selection highlight
+  cy.elements().removeClass('selected neighbor')
+
+  if (selectedNodeId.value) {
+    // Get the selected node and its neighborhood
+    const selectedNode = cy.getElementById(selectedNodeId.value)
+    if (selectedNode.length === 0) {
+      // Node doesn't exist anymore, clear selection
+      selectedNodeId.value = null
+      return
+    }
+
+    // Get connected nodes (neighbors) and edges
+    const neighborhood = selectedNode.neighborhood()
+    const connectedNodes = neighborhood.nodes()
+    const connectedEdges = neighborhood.edges()
+
+    // Hide all elements first
+    cy.elements().addClass('dimmed')
+
+    // Show and highlight the selected node and its connections
+    selectedNode.removeClass('dimmed').addClass('selected')
+    connectedNodes.removeClass('dimmed').addClass('neighbor')
+    connectedEdges.removeClass('dimmed')
+  } else {
+    // No node selected, show all elements normally
+    cy.elements().removeClass('dimmed selected neighbor')
+  }
+}
+
+function handleNodeClick(nodeId: string) {
+  if (selectedNodeId.value === nodeId) {
+    // Clicking the same node again deselects it
+    selectedNodeId.value = null
+  } else {
+    // Select the new node
+    selectedNodeId.value = nodeId
+  }
+  applyNodeFocusFilter()
+}
+
+function handleNodeDoubleClick(nodeId: string) {
+  // Parse node ID to get type and actual ID
+  const [prefix, ...idParts] = nodeId.split('-')
+  const actualId = idParts.join('-')
+  
+  // Navigate based on node type
+  switch (prefix) {
+    case 'appi':
+      // For app instances, we need to find the application ID
+      const applications = applicationStore.data.value ?? []
+      for (const app of applications) {
+        const instance = app.instances?.find(inst => inst.id === actualId)
+        if (instance && app.id) {
+          router.push({ name: 'instanceEdit', params: { applicationId: app.id, instanceId: actualId } })
+          return
+        }
+      }
+      break
+    case 'ds':
+      router.push({ name: 'dataStores' })
+      // TODO: Navigate to specific datastore when edit page exists
+      break
+    case 'ext':
+      router.push({ name: 'externalResources' })
+      // TODO: Navigate to specific external resource when edit page exists
+      break
+  }
 }
 
 onMounted(() => {
   if (!graphEl.value) return
 
   // Register fcose layout once
-    cytoscape.use(fcose as any)
+  cytoscape.use(fcose as any)
 
   cy = cytoscape({
     container: graphEl.value,
     elements: [],
     layout: {
       name: 'fcose',
-      // Options to improve spacing and reduce overlap, especially with compounds
       nodeDimensionsIncludeLabels: true,
       packComponents: true,
       nodeSeparation: 75,
@@ -194,12 +299,11 @@ onMounted(() => {
       quality: 'default'
     } as any,
     style: [
-      { selector: 'node', style: { 'label': 'data(label)' }},
+      { selector: 'node', style: { 'label': 'data(label)', 'color': $q.dark.isActive ? '#fff' : '#222' } as any },
       { selector: '[type="environment"]', style: { 'background-color': '#444' }},
       { selector: '[type="appInstance"]', style: { 'background-color': '#0080ff' }},
       { selector: '[type="datastore"]', style: { 'background-color': '#8b5cf6' }},
       { selector: '[type="external"]', style: { 'background-color': '#10b981' }},
-      // Improve compound environment appearance & spacing
       { selector: ':parent', style: { 'padding': '20px', 'border-width': '2px', 'background-opacity': 0.12 } },
       { selector: 'edge', style: { 
         'width': 2, 
@@ -207,13 +311,57 @@ onMounted(() => {
         'target-arrow-shape': 'triangle', 
         'target-arrow-color': '#ccc',
         'curve-style': 'bezier'
-      }}
+      }},
+      { selector: '.selected', style: {
+          'background-color': '#ffe600',
+          'border-width': 0,
+          'z-index': 999
+        } as any },
+        { selector: '.neighbor', style: {
+          'border-width': 0
+        } as any },
+      { selector: '.dimmed', style: {
+        'opacity': 0.1,
+        'z-index': 0
+      } as any },
+      { selector: '[type="environment"].dimmed', style: {
+        'opacity': 1
+      } as any }
     ]
+  })
+
+  // Add click handler for node selection
+  cy.on('tap', 'node', (event) => {
+    const node = event.target
+    // Don't allow selecting environment parent nodes
+    if (node.data('type') === 'environment') return
+    handleNodeClick(node.id())
+  })
+
+  // Add double-click handler for navigation
+  cy.on('dbltap', 'node', (event) => {
+    const node = event.target
+    // Don't allow navigating from environment parent nodes
+    if (node.data('type') === 'environment') return
+    handleNodeDoubleClick(node.id())
   })
 
   // Try initial render if data already present
   refreshGraph()
 })
+
+// Watch for theme changes and update node text color
+watch(() => $q.dark.isActive, (isDark) => {
+  if (!cy) return;
+  // Recreate node text color style
+  const textColor = isDark ? '#fff' : '#222';
+  cy.style()
+    .selector('node')
+    .style({ 'label': 'data(label)', 'color': textColor })
+    .update();
+  // Optionally, force a graph refresh to ensure all nodes update
+  refreshGraph();
+});
 </script>
 
 <style scoped>
@@ -228,6 +376,17 @@ onMounted(() => {
   outline: none;
 }
 
+:root {
+  --graph-node-text-color: #fff;
+}
+
+[data-theme="dark"] {
+  --graph-node-text-color: #fff;
+}
+[data-theme="light"] {
+  --graph-node-text-color: #222;
+}
+
 /* Make the page and card stretch to available viewport height */
 .graph-page {
   min-height: 100vh;
@@ -238,5 +397,27 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+}
+
+.graph-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2rem 2.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem 0;
+  justify-content: flex-start;
+}
+
+.node-filter-info {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  min-width: 220px;
+}
+
+.env-select {
+  min-width: 260px;
+  margin-right: 1.5rem;
 }
 </style>
