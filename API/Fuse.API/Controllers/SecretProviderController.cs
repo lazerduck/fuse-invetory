@@ -1,0 +1,248 @@
+namespace Fuse.API.Controllers
+{
+    using Microsoft.AspNetCore.Mvc;
+    using Fuse.Core.Commands;
+    using Fuse.Core.Helpers;
+    using Fuse.Core.Interfaces;
+    using Fuse.Core.Models;
+    using Fuse.Core.Responses;
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class SecretProviderController : ControllerBase
+    {
+        private readonly ISecretProviderService _secretProviderService;
+        private readonly ISecretOperationService _secretOperationService;
+        private readonly ISecurityService _securityService;
+
+        public SecretProviderController(
+            ISecretProviderService secretProviderService,
+            ISecretOperationService secretOperationService,
+            ISecurityService securityService)
+        {
+            _secretProviderService = secretProviderService;
+            _secretOperationService = secretOperationService;
+            _securityService = securityService;
+        }
+
+        [HttpGet]
+        [ProducesResponseType(200, Type = typeof(IEnumerable<SecretProviderResponse>))]
+        public async Task<ActionResult<IEnumerable<SecretProviderResponse>>> GetSecretProviders()
+        {
+            var providers = await _secretProviderService.GetSecretProvidersAsync();
+            var responses = providers.Select(p => new SecretProviderResponse(
+                p.Id,
+                p.Name,
+                p.VaultUri,
+                p.AuthMode,
+                p.Capabilities,
+                p.CreatedAt,
+                p.UpdatedAt
+            ));
+            return Ok(responses);
+        }
+
+        [HttpGet("{id}")]
+        [ProducesResponseType(200, Type = typeof(SecretProviderResponse))]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SecretProviderResponse>> GetSecretProviderById([FromRoute] Guid id)
+        {
+            var provider = await _secretProviderService.GetSecretProviderByIdAsync(id);
+            if (provider is null)
+                return NotFound(new { error = $"Secret provider with ID '{id}' not found." });
+
+            var response = new SecretProviderResponse(
+                provider.Id,
+                provider.Name,
+                provider.VaultUri,
+                provider.AuthMode,
+                provider.Capabilities,
+                provider.CreatedAt,
+                provider.UpdatedAt
+            );
+            return Ok(response);
+        }
+
+        [HttpPost]
+        [ProducesResponseType(201, Type = typeof(SecretProviderResponse))]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<SecretProviderResponse>> CreateSecretProvider([FromBody] CreateSecretProvider command)
+        {
+            var result = await _secretProviderService.CreateSecretProviderAsync(command);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { error = result.Error });
+            }
+
+            var provider = result.Value!;
+            var response = new SecretProviderResponse(
+                provider.Id,
+                provider.Name,
+                provider.VaultUri,
+                provider.AuthMode,
+                provider.Capabilities,
+                provider.CreatedAt,
+                provider.UpdatedAt
+            );
+            return CreatedAtAction(nameof(GetSecretProviderById), new { id = provider.Id }, response);
+        }
+
+        [HttpPut("{id}")]
+        [ProducesResponseType(200, Type = typeof(SecretProviderResponse))]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<SecretProviderResponse>> UpdateSecretProvider([FromRoute] Guid id, [FromBody] UpdateSecretProvider command)
+        {
+            var merged = command with { Id = id };
+            var result = await _secretProviderService.UpdateSecretProviderAsync(merged);
+            if (!result.IsSuccess)
+            {
+                return result.ErrorType switch
+                {
+                    ErrorType.NotFound => NotFound(new { error = result.Error }),
+                    _ => BadRequest(new { error = result.Error })
+                };
+            }
+
+            var provider = result.Value!;
+            var response = new SecretProviderResponse(
+                provider.Id,
+                provider.Name,
+                provider.VaultUri,
+                provider.AuthMode,
+                provider.Capabilities,
+                provider.CreatedAt,
+                provider.UpdatedAt
+            );
+            return Ok(response);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> DeleteSecretProvider([FromRoute] Guid id)
+        {
+            var result = await _secretProviderService.DeleteSecretProviderAsync(new DeleteSecretProvider(id));
+            if (!result.IsSuccess)
+            {
+                return result.ErrorType switch
+                {
+                    ErrorType.NotFound => NotFound(new { error = result.Error }),
+                    _ => BadRequest(new { error = result.Error })
+                };
+            }
+            return NoContent();
+        }
+
+        [HttpPost("test-connection")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> TestConnection([FromBody] TestSecretProviderConnection command)
+        {
+            var result = await _secretProviderService.TestConnectionAsync(command);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { error = result.Error });
+            }
+            return Ok(new { message = "Connection successful" });
+        }
+
+        [HttpPost("{providerId}/secrets")]
+        [ProducesResponseType(201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> CreateSecret([FromRoute] Guid providerId, [FromBody] CreateSecret command)
+        {
+            var merged = command with { ProviderId = providerId };
+            var (userName, userId) = GetUserInfo();
+            var result = await _secretOperationService.CreateSecretAsync(merged, userName, userId);
+            if (!result.IsSuccess)
+            {
+                return result.ErrorType switch
+                {
+                    ErrorType.NotFound => NotFound(new { error = result.Error }),
+                    _ => BadRequest(new { error = result.Error })
+                };
+            }
+            return CreatedAtAction(nameof(GetSecretProviderById), new { id = providerId }, new { message = "Secret created successfully" });
+        }
+
+        [HttpPost("{providerId}/secrets/{secretName}/rotate")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> RotateSecret([FromRoute] Guid providerId, [FromRoute] string secretName, [FromBody] RotateSecret command)
+        {
+            var merged = command with { ProviderId = providerId, SecretName = secretName };
+            var (userName, userId) = GetUserInfo();
+            var result = await _secretOperationService.RotateSecretAsync(merged, userName, userId);
+            if (!result.IsSuccess)
+            {
+                return result.ErrorType switch
+                {
+                    ErrorType.NotFound => NotFound(new { error = result.Error }),
+                    _ => BadRequest(new { error = result.Error })
+                };
+            }
+            return Ok(new { message = "Secret rotated successfully" });
+        }
+
+        [HttpPost("{providerId}/secrets/{secretName}/reveal")]
+        [ProducesResponseType(200, Type = typeof(SecretValueResponse))]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SecretValueResponse>> RevealSecret([FromRoute] Guid providerId, [FromRoute] string secretName, [FromQuery] string? version = null)
+        {
+            // Check if user is admin - reveal is restricted to admins only
+            var securityState = await _securityService.GetSecurityStateAsync();
+            var (userName, userId) = GetUserInfo();
+            
+            if (securityState.Settings.Level != SecurityLevel.None)
+            {
+                if (userId is null)
+                {
+                    return StatusCode(403, new { error = "Authentication required for secret reveal operation." });
+                }
+
+                var user = securityState.Users.FirstOrDefault(u => u.Id == userId);
+                if (user is null || user.Role != SecurityRole.Admin)
+                {
+                    return StatusCode(403, new { error = "Admin role required for secret reveal operation." });
+                }
+            }
+
+            var command = new RevealSecret(providerId, secretName, version);
+            var result = await _secretOperationService.RevealSecretAsync(command, userName, userId);
+            
+            if (!result.IsSuccess)
+            {
+                return result.ErrorType switch
+                {
+                    ErrorType.NotFound => NotFound(new { error = result.Error }),
+                    _ => BadRequest(new { error = result.Error })
+                };
+            }
+
+            return Ok(new SecretValueResponse(result.Value!));
+        }
+
+        private (string userName, Guid? userId) GetUserInfo()
+        {
+            // Extract user information from HttpContext or use Anonymous
+            // For now, we'll use a simple approach
+            var userName = User?.Identity?.Name ?? "Anonymous";
+            
+            // Try to extract user ID from claims if available
+            Guid? userId = null;
+            var userIdClaim = User?.FindFirst("user_id")?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+            {
+                userId = parsedUserId;
+            }
+
+            return (userName, userId);
+        }
+    }
+}
