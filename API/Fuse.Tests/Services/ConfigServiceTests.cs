@@ -52,7 +52,7 @@ public class ConfigServiceTests
         );
 
         var store = NewStoreWith(applications: new[] { app });
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var result = await service.ExportAsync(ConfigFormat.Json);
 
@@ -72,7 +72,7 @@ public class ConfigServiceTests
         var tag = new Tag(Guid.NewGuid(), "Production", "Production environment", TagColor.Red);
         
         var store = NewStoreWith(tags: new[] { tag });
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var result = await service.ExportAsync(ConfigFormat.Yaml);
 
@@ -85,7 +85,7 @@ public class ConfigServiceTests
     public async Task GetTemplateAsync_Json_ReturnsTemplate()
     {
         var store = NewStoreWith();
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var result = await service.GetTemplateAsync(ConfigFormat.Json);
 
@@ -101,7 +101,7 @@ public class ConfigServiceTests
     public async Task GetTemplateAsync_Yaml_ReturnsTemplate()
     {
         var store = NewStoreWith();
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var result = await service.GetTemplateAsync(ConfigFormat.Yaml);
 
@@ -113,7 +113,7 @@ public class ConfigServiceTests
     public async Task ImportAsync_Json_AddsNewItems()
     {
         var store = NewStoreWith();
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var newAppId = Guid.NewGuid();
         var importJson = $$"""
@@ -162,7 +162,7 @@ public class ConfigServiceTests
         );
 
         var store = NewStoreWith(applications: new[] { existingApp });
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var importJson = $$"""
         {
@@ -227,7 +227,7 @@ public class ConfigServiceTests
         );
 
         var store = NewStoreWith(applications: new[] { app1, app2 });
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         // Import only updates app1, should preserve app2
         var importJson = $$"""
@@ -259,7 +259,7 @@ public class ConfigServiceTests
     public async Task ImportAsync_Yaml_Works()
     {
         var store = NewStoreWith();
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var tagId = Guid.NewGuid();
         var importYaml = $@"
@@ -282,7 +282,7 @@ tags:
     public async Task ImportAsync_InvalidJson_ThrowsException()
     {
         var store = NewStoreWith();
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         var invalidJson = "{ invalid json }";
 
@@ -294,7 +294,7 @@ tags:
     public async Task ImportAsync_PartialImport_Works()
     {
         var store = NewStoreWith();
-        var service = new ConfigService(store);
+        var service = new ConfigService(store, new FakeAuditService());
 
         // Import only environments, no applications
         var envId = Guid.NewGuid();

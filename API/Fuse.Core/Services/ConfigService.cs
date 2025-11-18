@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Fuse.Core.Helpers;
 using Fuse.Core.Interfaces;
 using Fuse.Core.Models;
 using YamlDotNet.Serialization;
@@ -24,6 +25,7 @@ public enum ConfigFormat
 public class ConfigService : IConfigService
 {
     private readonly IFuseStore _store;
+    private readonly IAuditService _auditService;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -44,9 +46,10 @@ public class ConfigService : IConfigService
         .WithObjectFactory(new RecordFriendlyObjectFactory())
         .Build();
 
-    public ConfigService(IFuseStore store)
+    public ConfigService(IFuseStore store, IAuditService auditService)
     {
         _store = store;
+        _auditService = auditService;
     }
 
     public async Task<string> ExportAsync(ConfigFormat format, CancellationToken ct = default)
@@ -64,12 +67,25 @@ public class ConfigService : IConfigService
             KumaIntegrations = snapshot.KumaIntegrations.ToList()
         };
 
-        return format switch
+        var result = format switch
         {
             ConfigFormat.Json => JsonSerializer.Serialize(config, JsonOptions),
             ConfigFormat.Yaml => YamlSerializer.Serialize(config),
             _ => throw new ArgumentException($"Unsupported format: {format}")
         };
+        
+        // Audit log
+        var auditLog = AuditHelper.CreateLog(
+            AuditAction.ConfigExported,
+            AuditArea.Config,
+            "System",
+            null,
+            null,
+            new { Format = format.ToString(), ItemCount = config.Applications.Count + config.DataStores.Count + config.Platforms.Count }
+        );
+        await _auditService.LogAsync(auditLog, ct);
+        
+        return result;
     }
 
     public Task<string> GetTemplateAsync(ConfigFormat format, CancellationToken ct = default)
@@ -247,6 +263,24 @@ public class ConfigService : IConfigService
                 Security: current.Security
             );
         }, ct);
+        
+        // Audit log
+        var auditLog = AuditHelper.CreateLog(
+            AuditAction.ConfigImported,
+            AuditArea.Config,
+            "System",
+            null,
+            null,
+            new 
+            { 
+                Format = format.ToString(), 
+                ApplicationCount = imported.Applications.Count,
+                DataStoreCount = imported.DataStores.Count,
+                PlatformCount = imported.Platforms.Count,
+                AccountCount = imported.Accounts.Count
+            }
+        );
+        await _auditService.LogAsync(auditLog, ct);
     }
 }
 
