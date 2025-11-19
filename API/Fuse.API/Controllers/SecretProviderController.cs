@@ -8,6 +8,7 @@ namespace Fuse.API.Controllers
     using Fuse.Core.Responses;
     using System.Security.Claims;
     using System.Linq;
+    using System.Collections.Generic;
 
     [ApiController]
     [Route("api/[controller]")]
@@ -148,6 +149,29 @@ namespace Fuse.API.Controllers
                 return BadRequest(new { error = result.Error });
             }
             return Ok(new { message = "Connection successful" });
+        }
+
+        [HttpGet("{providerId}/secrets")]
+        [ProducesResponseType(200, Type = typeof(IEnumerable<SecretMetadataResponse>))]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<IEnumerable<SecretMetadataResponse>>> GetSecrets([FromRoute] Guid providerId)
+        {
+            var result = await _secretOperationService.ListSecretsAsync(providerId);
+
+            if (!result.IsSuccess)
+            {
+                return result.ErrorType switch
+                {
+                    ErrorType.NotFound => NotFound(new { error = result.Error }),
+                    _ => BadRequest(new { error = result.Error })
+                };
+            }
+
+            var response = result.Value!
+                .Select(s => new SecretMetadataResponse(s.Name, s.Enabled, s.UpdatedOn, s.ContentType));
+
+            return Ok(response);
         }
 
         [HttpPost("{providerId}/secrets")]

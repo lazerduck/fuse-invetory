@@ -148,10 +148,13 @@ import { Notify, Dialog } from 'quasar'
 import {
   Account,
   AuthKind,
+  AzureKeyVaultBinding,
   CreateAccount,
   CreateAccountGrant,
   Grant,
   Privilege,
+  SecretBinding,
+  SecretBindingKind,
   TargetKind,
   UpdateAccount,
   UpdateAccountGrant
@@ -159,7 +162,13 @@ import {
 import AccountForm from '../components/accounts/AccountForm.vue'
 import AccountGrantsSection from '../components/accounts/AccountGrantsSection.vue'
 import AccountsTable from '../components/accounts/AccountsTable.vue'
-import type { AccountFormModel, KeyValuePair, TargetOption, SelectOption } from '../components/accounts/types'
+import type {
+  AccountFormModel,
+  AccountSecretFields,
+  KeyValuePair,
+  TargetOption,
+  SelectOption
+} from '../components/accounts/types'
 import { useFuseClient } from '../composables/useFuseClient'
 import { useFuseStore } from '../stores/FuseStore'
 import { useTags } from '../composables/useTags'
@@ -203,12 +212,18 @@ const isCreateDialogOpen = ref(false)
 const isEditDialogOpen = ref(false)
 const selectedAccount = ref<Account | null>(null)
 
+const emptySecretFields = (): AccountSecretFields => ({
+  providerId: null,
+  secretName: null,
+  plainReference: ''
+})
+
 const emptyAccountForm = (): AccountFormModel => ({
   targetKind: TargetKind.Application,
   targetId: null,
   authKind: AuthKind.None,
   userName: '',
-  secretRef: '',
+  secret: emptySecretFields(),
   parameters: [],
   tagIds: [],
   grants: []
@@ -256,7 +271,7 @@ function openEditDialog(account: Account) {
     targetId: account.targetId ?? null,
     authKind: account.authKind ?? AuthKind.None,
     userName: account.userName ?? '',
-    secretRef: account.secretRef ?? '',
+    secret: mapSecretBindingToForm(account),
     parameters: convertParametersToPairs(account.parameters),
     tagIds: [...(account.tagIds ?? [])],
     grants: (account.grants ?? []).map(cloneGrant)
@@ -332,6 +347,7 @@ watch(data, (accounts) => {
   if (latest) {
     selectedAccount.value = latest
     editForm.grants = (latest.grants ?? []).map(cloneGrant)
+    editForm.secret = mapSecretBindingToForm(latest)
   }
 })
 
@@ -356,6 +372,62 @@ function buildParameters(list: KeyValuePair[]) {
     }
   }
   return Object.keys(result).length ? result : undefined
+}
+
+function mapSecretBindingToForm(account: Account | null): AccountSecretFields {
+  if (!account?.secretBinding) {
+    return {
+      providerId: null,
+      secretName: null,
+      plainReference: account?.secretRef ?? ''
+    }
+  }
+
+  const binding = account.secretBinding
+  if (binding.kind === SecretBindingKind.AzureKeyVault) {
+    return {
+      providerId: binding.azureKeyVault?.providerId ?? null,
+      secretName: binding.azureKeyVault?.secretName ?? null,
+      plainReference: ''
+    }
+  }
+
+  if (binding.kind === SecretBindingKind.PlainReference) {
+    return {
+      providerId: null,
+      secretName: null,
+      plainReference: binding.plainReference ?? account.secretRef ?? ''
+    }
+  }
+
+  return {
+    providerId: null,
+    secretName: null,
+    plainReference: ''
+  }
+}
+
+function buildSecretBindingPayload(secret: AccountSecretFields) {
+  if (secret.providerId && secret.secretName) {
+    return Object.assign(new SecretBinding(), {
+      kind: SecretBindingKind.AzureKeyVault,
+      azureKeyVault: Object.assign(new AzureKeyVaultBinding(), {
+        providerId: secret.providerId,
+        secretName: secret.secretName
+      })
+    })
+  }
+
+  if (!secret.plainReference?.trim()) {
+    return Object.assign(new SecretBinding(), {
+      kind: SecretBindingKind.None
+    })
+  }
+
+  return Object.assign(new SecretBinding(), {
+    kind: SecretBindingKind.PlainReference,
+    plainReference: secret.plainReference.trim()
+  })
 }
 
 function cloneGrant(grant: Grant): Grant {
@@ -412,12 +484,17 @@ const deleteMutation = useMutation({
 })
 
 function submitCreate() {
+  if (createForm.secret.providerId && !createForm.secret.secretName) {
+    Notify.create({ type: 'warning', message: 'Select a secret name before saving.' })
+    return
+  }
+
   const payload = Object.assign(new CreateAccount(), {
     targetKind: createForm.targetKind,
     targetId: createForm.targetId ?? undefined,
     authKind: createForm.authKind,
     userName: createForm.userName || undefined,
-    secretRef: createForm.secretRef || undefined,
+    secretBinding: buildSecretBindingPayload(createForm.secret),
     parameters: buildParameters(createForm.parameters),
     grants: createForm.grants.map(buildGrantPayload),
     tagIds: createForm.tagIds.length ? [...createForm.tagIds] : undefined
@@ -427,12 +504,18 @@ function submitCreate() {
 
 function submitEdit() {
   if (!editForm.id) return
+
+  if (editForm.secret.providerId && !editForm.secret.secretName) {
+    Notify.create({ type: 'warning', message: 'Select a secret name before saving.' })
+    return
+  }
+
   const payload = Object.assign(new UpdateAccount(), {
     targetKind: editForm.targetKind,
     targetId: editForm.targetId ?? undefined,
     authKind: editForm.authKind,
     userName: editForm.userName || undefined,
-    secretRef: editForm.secretRef || undefined,
+    secretBinding: buildSecretBindingPayload(editForm.secret),
     parameters: buildParameters(editForm.parameters),
     grants: (selectedAccount.value?.grants ?? []).map(buildGrantPayload),
     tagIds: editForm.tagIds.length ? [...editForm.tagIds] : undefined

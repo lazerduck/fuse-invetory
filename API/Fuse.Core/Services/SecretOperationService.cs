@@ -2,6 +2,7 @@ using Fuse.Core.Commands;
 using Fuse.Core.Helpers;
 using Fuse.Core.Interfaces;
 using Fuse.Core.Models;
+using System.Collections.Generic;
 
 namespace Fuse.Core.Services;
 
@@ -19,6 +20,20 @@ public class SecretOperationService : ISecretOperationService
         _fuseStore = fuseStore;
         _azureKeyVaultClient = azureKeyVaultClient;
         _auditService = auditService;
+    }
+
+    public async Task<Result<IReadOnlyList<SecretMetadata>>> ListSecretsAsync(Guid providerId)
+    {
+        var store = await _fuseStore.GetAsync();
+        var provider = store.SecretProviders.FirstOrDefault(p => p.Id == providerId);
+
+        if (provider is null)
+            return Result<IReadOnlyList<SecretMetadata>>.Failure($"Secret provider with ID '{providerId}' not found.", ErrorType.NotFound);
+
+        if (!provider.Capabilities.HasFlag(SecretProviderCapabilities.Check))
+            return Result<IReadOnlyList<SecretMetadata>>.Failure("This secret provider does not have Check capability enabled.");
+
+        return await _azureKeyVaultClient.ListSecretsAsync(provider);
     }
 
     public async Task<Result> CreateSecretAsync(CreateSecret command, string userName, Guid? userId)

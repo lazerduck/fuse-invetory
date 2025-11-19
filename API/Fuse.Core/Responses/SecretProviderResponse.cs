@@ -17,3 +17,11 @@ public record SecretValueResponse
 (
     string Value
 );
+
+public record SecretMetadataResponse
+(
+    string Name,
+    bool Enabled,
+    DateTimeOffset? UpdatedOn,
+    string? ContentType
+);

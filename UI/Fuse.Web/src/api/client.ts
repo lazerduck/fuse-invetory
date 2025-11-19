@@ -354,6 +354,11 @@ export interface IFuseApiClient {
     testConnection(body: TestSecretProviderConnection | undefined, signal?: AbortSignal): Promise<void>;
 
     /**
+     * @return OK
+     */
+    secretsAll(providerId: string, signal?: AbortSignal): Promise<SecretMetadataResponse[]>;
+
+    /**
      * @param body (optional) 
      * @return Created
      */
@@ -3680,6 +3685,68 @@ export class FuseApiClient implements IFuseApiClient {
     }
 
     /**
+     * @return OK
+     */
+    secretsAll(providerId: string, signal?: AbortSignal): Promise<SecretMetadataResponse[]> {
+        let url_ = this.baseUrl + "/api/SecretProvider/{providerId}/secrets";
+        if (providerId === undefined || providerId === null)
+            throw new globalThis.Error("The parameter 'providerId' must be defined.");
+        url_ = url_.replace("{providerId}", encodeURIComponent("" + providerId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSecretsAll(_response);
+        });
+    }
+
+    protected processSecretsAll(response: Response): Promise<SecretMetadataResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(SecretMetadataResponse.fromJS(item));
+            }
+            else {
+                result200 = null as any;
+            }
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            let resultData404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result404 = ProblemDetails.fromJS(resultData404);
+            return throwException("Not Found", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SecretMetadataResponse[]>(null as any);
+    }
+
+    /**
      * @param body (optional) 
      * @return Created
      */
@@ -6914,6 +6981,54 @@ export enum SecretBindingKind {
     None = "None",
     PlainReference = "PlainReference",
     AzureKeyVault = "AzureKeyVault",
+}
+
+export class SecretMetadataResponse implements ISecretMetadataResponse {
+    name?: string | undefined;
+    enabled?: boolean;
+    updatedOn?: Date | undefined;
+    contentType?: string | undefined;
+
+    constructor(data?: ISecretMetadataResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["Name"];
+            this.enabled = _data["Enabled"];
+            this.updatedOn = _data["UpdatedOn"] ? new Date(_data["UpdatedOn"].toString()) : undefined as any;
+            this.contentType = _data["ContentType"];
+        }
+    }
+
+    static fromJS(data: any): SecretMetadataResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SecretMetadataResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["Name"] = this.name;
+        data["Enabled"] = this.enabled;
+        data["UpdatedOn"] = this.updatedOn ? this.updatedOn.toISOString() : undefined as any;
+        data["ContentType"] = this.contentType;
+        return data;
+    }
+}
+
+export interface ISecretMetadataResponse {
+    name?: string | undefined;
+    enabled?: boolean;
+    updatedOn?: Date | undefined;
+    contentType?: string | undefined;
 }
 
 export enum SecretProviderAuthMode {

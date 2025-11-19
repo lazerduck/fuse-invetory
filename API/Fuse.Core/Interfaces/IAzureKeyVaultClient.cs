@@ -10,4 +10,5 @@ public interface IAzureKeyVaultClient
     Task<Result> CreateSecretAsync(SecretProvider provider, string secretName, string secretValue);
     Task<Result> RotateSecretAsync(SecretProvider provider, string secretName, string newSecretValue);
     Task<Result<string>> ReadSecretAsync(SecretProvider provider, string secretName, string? version = null);
+    Task<Result<IReadOnlyList<SecretMetadata>>> ListSecretsAsync(SecretProvider provider);
 }

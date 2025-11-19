@@ -55,3 +55,11 @@ public record AzureKeyVaultBinding
     string SecretName,
     string? Version
 );
+
+public record SecretMetadata
+(
+    string Name,
+    bool Enabled,
+    DateTimeOffset? UpdatedOn,
+    string? ContentType
+);

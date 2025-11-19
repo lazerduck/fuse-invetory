@@ -5,6 +5,7 @@ using Azure.Security.KeyVault.Secrets;
 using Fuse.Core.Helpers;
 using Fuse.Core.Interfaces;
 using Fuse.Core.Models;
+using System.Collections.Generic;
 
 namespace Fuse.Core.Services;
 
@@ -119,6 +120,35 @@ public class AzureKeyVaultClient : IAzureKeyVaultClient
         catch (Exception ex)
         {
             return Result<string>.Failure($"Failed to read secret: {ex.Message}", ErrorType.Validation);
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<SecretMetadata>>> ListSecretsAsync(SecretProvider provider)
+    {
+        try
+        {
+            var client = GetClient(provider);
+            var items = new List<SecretMetadata>();
+
+            await foreach (var secretProps in client.GetPropertiesOfSecretsAsync())
+            {
+                items.Add(new SecretMetadata(
+                    Name: secretProps.Name,
+                    Enabled: secretProps.Enabled ?? false,
+                    UpdatedOn: secretProps.UpdatedOn,
+                    ContentType: secretProps.ContentType
+                ));
+            }
+
+            return Result<IReadOnlyList<SecretMetadata>>.Success(items);
+        }
+        catch (RequestFailedException ex)
+        {
+            return Result<IReadOnlyList<SecretMetadata>>.Failure($"Failed to list secrets: {ex.Message}", ErrorType.Validation);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<SecretMetadata>>.Failure($"Failed to list secrets: {ex.Message}");
         }
     }
 
