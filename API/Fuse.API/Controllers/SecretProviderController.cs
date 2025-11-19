@@ -6,6 +6,8 @@ namespace Fuse.API.Controllers
     using Fuse.Core.Interfaces;
     using Fuse.Core.Models;
     using Fuse.Core.Responses;
+    using System.Security.Claims;
+    using System.Linq;
 
     [ApiController]
     [Route("api/[controller]")]
@@ -176,6 +178,17 @@ namespace Fuse.API.Controllers
         {
             var merged = command with { ProviderId = providerId, SecretName = secretName };
             var (userName, userId) = GetUserInfo();
+
+            if (userId is null)
+            {
+                return StatusCode(403, new { error = "Authentication required for secret reveal operation." });
+            }
+            
+            if (!IsAdmin())
+            {
+                return StatusCode(403, new { error = "Admin role required for secret reveal operation." });
+            }
+
             var result = await _secretOperationService.RotateSecretAsync(merged, userName, userId);
             if (!result.IsSuccess)
             {
@@ -199,18 +212,15 @@ namespace Fuse.API.Controllers
             var securityState = await _securityService.GetSecurityStateAsync();
             var (userName, userId) = GetUserInfo();
             
-            if (securityState.Settings.Level != SecurityLevel.None)
+            if (userId is null)
             {
-                if (userId is null)
-                {
-                    return StatusCode(403, new { error = "Authentication required for secret reveal operation." });
-                }
+                return StatusCode(403, new { error = "Authentication required for secret reveal operation." });
+            }
 
-                var user = securityState.Users.FirstOrDefault(u => u.Id == userId);
-                if (user is null || user.Role != SecurityRole.Admin)
-                {
-                    return StatusCode(403, new { error = "Admin role required for secret reveal operation." });
-                }
+            var user = securityState.Users.FirstOrDefault(u => u.Id == userId);
+            if (user is null || user.Role != SecurityRole.Admin)
+            {
+                return StatusCode(403, new { error = "Admin role required for secret reveal operation." });
             }
 
             var command = new RevealSecret(providerId, secretName, version);
@@ -228,16 +238,23 @@ namespace Fuse.API.Controllers
             return Ok(new SecretValueResponse(result.Value!));
         }
 
+        private bool IsAdmin() =>
+            User?.IsInRole(SecurityRole.Admin.ToString()) == true;
+
         private (string userName, Guid? userId) GetUserInfo()
         {
-            // Extract user information from HttpContext or use Anonymous
-            // For now, we'll use a simple approach
-            var userName = User?.Identity?.Name ?? "Anonymous";
-            
-            // Try to extract user ID from claims if available
+            // If unauthenticated, return Anonymous/null
+            if (User?.Identity?.IsAuthenticated != true)
+                return ("Anonymous", null);
+
+            // Prefer explicit Name claim set by middleware, fallback to Identity.Name
+            var nameClaim = User.FindFirst(ClaimTypes.Name)?.Value;
+            var userName = string.IsNullOrWhiteSpace(nameClaim) ? (User.Identity?.Name ?? "Anonymous") : nameClaim;
+
+            // Extract user id from NameIdentifier claim when available
             Guid? userId = null;
-            var userIdClaim = User?.FindFirst("user_id")?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+            var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdValue) && Guid.TryParse(userIdValue, out var parsedUserId))
             {
                 userId = parsedUserId;
             }
