@@ -273,12 +273,16 @@ const createSecretMutation = useMutation({
 
 watch(
   () => form.value.secret.providerId,
-  () => {
-    form.value.secret.secretName = null
-    createSecretOpen.value = false
-    newSecretName.value = ''
-    newSecretValue.value = ''
-    if (form.value.secret.providerId) {
+  (newProviderId, oldProviderId) => {
+    // Only clear secretName if this is an actual change (not initial setup)
+    // Skip if both are null/undefined (initial state)
+    if (oldProviderId !== undefined && newProviderId !== oldProviderId) {
+      form.value.secret.secretName = null
+      createSecretOpen.value = false
+      newSecretName.value = ''
+      newSecretValue.value = ''
+    }
+    if (newProviderId) {
       secretsQuery.refetch()
     }
   }

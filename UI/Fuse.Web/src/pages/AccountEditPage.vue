@@ -27,7 +27,11 @@
     <q-card v-if="fuseStore.canModify && !loadError" class="content-card">
       <q-card-section>
         <div class="text-h6 q-mb-md">Account Details</div>
+        <div v-if="isLoadingInitialData" class="row items-center justify-center q-pa-lg">
+          <q-spinner color="primary" size="3em" />
+        </div>
         <AccountForm
+          v-else
           v-model="form"
           :target-kind-options="targetKindOptions"
           :target-options="targetOptions"
@@ -258,6 +262,7 @@ import { useDataStores } from '../composables/useDataStores'
 import { useExternalResources } from '../composables/useExternalResources'
 import { useEnvironments } from '../composables/useEnvironments'
 import { useSecretProviders } from '../composables/useSecretProviders'
+import { useSecretProviderSecrets } from '../composables/useSecretProviderSecrets'
 import { getErrorMessage } from '../utils/error'
 import { hasCapability } from '../utils/secretProviders'
 
@@ -294,6 +299,29 @@ const { data: account, error: loadError } = useQuery({
   queryFn: () => client.accountGET(accountId.value!),
   enabled: computed(() => !!accountId.value),
   retry: false
+})
+
+// Track the provider ID from loaded account to fetch secrets before initializing form
+const accountProviderId = computed(() => {
+  const binding = account.value?.secretBinding
+  if (binding?.kind === SecretBindingKind.AzureKeyVault) {
+    return binding.azureKeyVault?.providerId ?? null
+  }
+  return null
+})
+
+// Fetch secrets if account has a provider (needed before form initialization)
+const accountSecretsQuery = useSecretProviderSecrets(accountProviderId)
+
+// Only initialize form when secrets are loaded (if needed)
+const isLoadingInitialData = computed(() => {
+  if (!isEditMode.value) return false
+  if (!account.value) return true
+  // If account has a provider, wait for secrets to load
+  if (accountProviderId.value && accountSecretsQuery.isLoading.value) {
+    return true
+  }
+  return false
 })
 
 const tagOptions = computed<TargetOption[]>(() => tagsStore.options.value)
@@ -377,11 +405,11 @@ const isRevealDialogOpen = ref(false)
 const revealedSecret = ref('')
 const showRevealedValue = ref(false)
 
-// Initialize form from account data
+// Initialize form from account data (only after secrets are loaded if needed)
 watch(
-  account,
-  (acc) => {
-    if (acc) {
+  [account, isLoadingInitialData],
+  ([acc, loading]) => {
+    if (acc && !loading) {
       Object.assign(form, {
         targetKind: acc.targetKind ?? TargetKind.Application,
         targetId: acc.targetId ?? null,
